@@ -16,6 +16,7 @@ export default function AuthProvider({ children }) {
       .then(({ data }) => {
         const user = data.data;
         dispatch(setUser(user));
+        localStorage.setItem("auth_user", JSON.stringify(user));
 
         // Init socket
         const socket = initSocket(user._id);
@@ -26,10 +27,10 @@ export default function AuthProvider({ children }) {
         
         socket.on("typing", (data) => dispatch(setTyping(data)));
         socket.on("stop_typing", (data) => dispatch(clearTyping(data)));
-        // We can add a messages_read listener here if we want to show blue ticks
       })
       .catch(() => {
         dispatch(clearUser());
+        localStorage.removeItem("auth_user");
         disconnectSocket();
       });
 

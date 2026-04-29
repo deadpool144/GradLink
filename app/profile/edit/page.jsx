@@ -99,6 +99,7 @@ export default function ProfileEditPage() {
     try {
       const { data } = await api.put("/users", formData);
       dispatch(setUser(data.data));
+      localStorage.setItem("auth_user", JSON.stringify(data.data));
       toast.success("Profile updated successfully");
       router.push(`/profile/${user._id}`);
     } catch (err) {
@@ -119,6 +120,7 @@ export default function ProfileEditPage() {
     try {
       const { data } = await api.post(`/users/${type}`, fd);
       dispatch(setUser(data.data));
+      localStorage.setItem("auth_user", JSON.stringify(data.data));
       toast.success(`${type} updated`, { id: loadId });
     } catch (err) {
       toast.error(`Failed to upload ${type}`, { id: loadId });

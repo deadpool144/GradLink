@@ -164,7 +164,9 @@ export default function AuthPage() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      dispatch(setUser(data.data)); initSocket(data.data._id);
+      dispatch(setUser(data.data)); 
+      localStorage.setItem("auth_user", JSON.stringify(data.data));
+      initSocket(data.data._id);
       toast.success("Welcome back!"); router.push("/feed");
     } catch (err) {
       const msg = err.response?.data?.message || "Something went wrong";
@@ -189,7 +191,9 @@ export default function AuthPage() {
 
   const handleVerify = () => run(async () => {
     const { data } = await api.post("/auth/verify-otp", { email, otp: otp.join("") });
-    dispatch(setUser(data.data)); initSocket(data.data._id);
+    dispatch(setUser(data.data)); 
+    localStorage.setItem("auth_user", JSON.stringify(data.data));
+    initSocket(data.data._id);
     toast.success("Email verified — welcome!"); router.push("/feed");
   });
 
