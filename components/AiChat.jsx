@@ -162,7 +162,7 @@ const AiChat = ({ isOpen, onClose }) => {
           animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, y: 24, scale: 0.96, filter: "blur(8px)" }}
           transition={{ type: "spring", damping: 30, stiffness: 320, mass: 0.8 }}
-          className="fixed bottom-[90px] left-6 z-50 flex flex-col"
+          className="fixed bottom-[170px] right-10 z-50 flex flex-col"
           style={{ width: "min(420px, calc(100vw - 1.5rem))", height: "min(580px, calc(100vh - 120px))" }}
         >
           {/* Glass card */}
