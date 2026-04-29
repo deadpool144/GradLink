@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUp, RotateCcw, Zap, GraduationCap } from "lucide-react";
 import axios from "axios";
+import api from "@/lib/api";
 import ReactMarkdown from "react-markdown";
 
 // ─── Minimal chat message timestamp formatter ────────────────────────────────
@@ -129,9 +130,7 @@ const AiChat = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || `http://${hostname}:5001/api`;
-      const { data } = await axios.post(`${baseUrl}/ai/chat`, { message: text }, { withCredentials: true });
+      const { data } = await api.post(`/ai/chat`, { message: text });
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.data.response, time: new Date() },

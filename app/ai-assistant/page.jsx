@@ -14,6 +14,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import axios from "axios";
+import api from "@/lib/api";
 import ReactMarkdown from "react-markdown";
 import { toast } from "react-hot-toast";
 
@@ -96,11 +97,8 @@ const AIHub = () => {
         formData.append("file", currentFile);
       }
 
-      const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || `http://${hostname}:5001/api`;
-
-      const { data } = await axios.post(`${baseUrl}/ai/analyze`, formData, {
-        withCredentials: true
+      const { data } = await api.post(`/ai/analyze`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
 
       setMessages(prev => [...prev, {
