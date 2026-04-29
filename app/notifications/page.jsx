@@ -138,25 +138,7 @@ export default function NotificationsPage() {
                   </button>
                 </div>
                 
-                {n.type === "connection_request" && (
-                  <div className="mt-3 flex gap-2">
-                    <button 
-                      onClick={() => handleResponse(n._id, n.sender._id, "accept")}
-                      disabled={actionLoading === n._id}
-                      className="btn-primary py-1.5 px-4 text-xs flex items-center gap-2"
-                    >
-                      {actionLoading === n._id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                      Accept
-                    </button>
-                    <button 
-                      onClick={() => handleResponse(n._id, n.sender._id, "reject")}
-                      disabled={actionLoading === n._id}
-                      className="btn-secondary py-1.5 px-4 text-xs"
-                    >
-                      Ignore
-                    </button>
-                  </div>
-                )}
+                {/* Action buttons removed as requested by user */}
               </div>
             </div>
           ))

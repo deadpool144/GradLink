@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import {
   setConversations,
@@ -10,110 +11,341 @@ import {
 } from "@/lib/slices/chatSlice";
 import { getSocket } from "@/lib/socket";
 import toast from "react-hot-toast";
-import { 
-  Search, MoreVertical, Send, Image as ImageIcon, Smile, 
-  Paperclip, Plus, Loader2, MessageSquare, Check, CheckCheck,
-  User, Trash2
+import {
+  Search, MoreVertical, Send, ArrowLeft,
+  Plus, Loader2, MessageSquare, Check, CheckCheck,
+  Trash2, User, Smile
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { format, isToday, isYesterday } from "date-fns";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/Avatar";
+import { motion, AnimatePresence } from "framer-motion";
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function formatConvTime(date) {
+  const d = new Date(date);
+  if (isToday(d))     return format(d, "HH:mm");
+  if (isYesterday(d)) return "Yesterday";
+  return format(d, "MMM d");
+}
+
+function formatMsgTime(date) {
+  return format(new Date(date), "HH:mm");
+}
+
+// ── Typing Dots ───────────────────────────────────────────────────────────────
+function TypingBubble() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="flex items-end gap-2 justify-start"
+    >
+      <div className="w-7 h-7 rounded-full bg-[var(--surface-3)] flex-shrink-0" />
+      <div
+        className="flex items-center gap-1.5 px-4 py-3 rounded-2xl rounded-bl-sm shadow-[var(--shadow-sm)]"
+        style={{ background: "var(--chat-other)" }}
+      >
+        {[0, 0.18, 0.36].map((d, i) => (
+          <motion.span
+            key={i}
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: "var(--text-3)" }}
+            animate={{ y: [0, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 0.9, delay: d }}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Conversation Item ────────────────────────────────────────────────────────
+function ConvItem({ conv, isSelected, onSelect, myId, onlineUsers, unread, typingUsers }) {
+  const partner   = conv.participants.find(p => p._id !== myId);
+  const isOnline  = partner && onlineUsers.includes(partner._id);
+  const convUnread = unread[conv._id] || 0;
+  const isTyping  = typingUsers[conv._id]?.length > 0;
+  const name      = conv.isGroupChat ? conv.name : `${partner?.firstName} ${partner?.lastName}`;
+  const initials  = partner ? (partner.firstName?.[0] || "") + (partner.lastName?.[0] || "") : "?";
+
+  return (
+    <button
+      onClick={() => onSelect(conv._id)}
+      className={cn(
+        "w-full px-4 py-3.5 flex items-center gap-3.5 text-left transition-all duration-150 relative group",
+        isSelected
+          ? "bg-[var(--primary-alpha)]"
+          : "hover:bg-[var(--surface-2)]"
+      )}
+    >
+      {/* Active indicator */}
+      {isSelected && (
+        <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-[rgb(var(--primary-rgb))] rounded-r-full" />
+      )}
+
+      {/* Avatar */}
+      <div className="relative flex-shrink-0">
+        <div className={cn(
+          "w-11 h-11 rounded-2xl overflow-hidden relative flex items-center justify-center font-bold text-sm",
+          "bg-[var(--surface-2)]"
+        )}
+          style={!partner?.avatar ? { background: "var(--primary-alpha)", color: "rgb(var(--primary-rgb))" } : {}}
+        >
+          {partner?.avatar
+            ? <Image src={partner.avatar} fill sizes="44px" alt={name} className="object-cover" />
+            : <span>{initials}</span>
+          }
+        </div>
+        {isOnline && (
+          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-[var(--surface)] rounded-full" />
+        )}
+      </div>
+
+      {/* Text */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between mb-0.5">
+          <span className={cn(
+            "text-[13.5px] font-semibold truncate tracking-tight",
+            isSelected
+              ? "text-[rgb(var(--primary-rgb))]"
+              : convUnread > 0
+                ? "text-[var(--text-1)] font-bold"
+                : "text-[var(--text-1)]"
+          )}>
+            {name}
+          </span>
+          {conv.lastMessage && (
+            <span className="text-[10px] text-[var(--text-3)] flex-shrink-0 ml-2">
+              {formatConvTime(conv.lastMessage.createdAt)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <p className={cn(
+            "text-[12px] truncate flex-1 leading-snug",
+            isTyping
+              ? "text-[rgb(var(--primary-rgb))] italic font-medium"
+              : convUnread > 0
+                ? "text-[var(--text-1)] font-semibold"
+                : "text-[var(--text-2)]"
+          )}>
+            {isTyping ? "Typing…" : conv.lastMessage?.text || "Started a conversation"}
+          </p>
+          {convUnread > 0 && !isSelected && (
+            <span className="min-w-[18px] h-[18px] px-1.5 bg-[rgb(var(--primary-rgb))] text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0">
+              {convUnread > 99 ? "99" : convUnread}
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ── Message Bubble ────────────────────────────────────────────────────────────
+function MessageBubble({ msg, isMine, showAvatar }) {
+  const isRead = msg.readBy?.length > 1;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      className={cn("flex items-end gap-2 group", isMine ? "justify-end" : "justify-start")}
+    >
+      {/* Other's avatar */}
+      {!isMine && (
+        <div className="w-7 flex-shrink-0 self-end mb-1">
+          {showAvatar ? (
+            <div className="w-7 h-7 rounded-full overflow-hidden relative"
+              style={{ background: "var(--primary-alpha)" }}
+            >
+              {msg.sender?.avatar
+                ? <Image src={msg.sender.avatar} fill sizes="28px" alt="" className="object-cover" />
+                : <span className="w-full h-full flex items-center justify-center text-[10px] font-bold" style={{ color: "rgb(var(--primary-rgb))" }}>{msg.sender?.firstName?.[0]}</span>
+              }
+            </div>
+          ) : <div className="w-7 h-7" />}
+        </div>
+      )}
+
+      <div className={cn("flex flex-col max-w-[70%] sm:max-w-[60%]", isMine ? "items-end" : "items-start")}>
+        {/* Bubble */}
+        <div
+          className={cn(
+            "px-4 py-2.5 text-[14px] leading-[1.55] shadow-[var(--shadow-sm)] transition-all",
+            isMine
+              ? "rounded-2xl rounded-br-sm"
+              : "rounded-2xl rounded-bl-sm"
+          )}
+          style={{
+            background: isMine ? "var(--chat-mine)" : "var(--chat-other)",
+            color:      isMine ? "var(--chat-mine-text)" : "var(--chat-other-text)",
+          }}
+        >
+          <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+        </div>
+
+        {/* Meta: time + read */}
+        <div className={cn(
+          "flex items-center gap-1 mt-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-medium",
+          isMine ? "flex-row-reverse text-[var(--text-3)]" : "text-[var(--text-3)]"
+        )}>
+          <span>{formatMsgTime(msg.createdAt)}</span>
+          {isMine && (
+            isRead
+              ? <CheckCheck className="w-3 h-3 text-[rgb(var(--primary-rgb))]" />
+              : <Check className="w-3 h-3" />
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Empty State ───────────────────────────────────────────────────────────────
+function EmptyInbox({ onBrowse }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <div
+        className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-[var(--shadow-md)]"
+        style={{ background: "var(--primary-alpha)" }}
+      >
+        <MessageSquare className="w-9 h-9" style={{ color: "rgb(var(--primary-rgb))" }} />
+      </div>
+      <h3 className="text-[18px] font-bold text-[var(--text-1)] mb-2 tracking-tight">No conversation selected</h3>
+      <p className="text-[13px] text-[var(--text-2)] leading-relaxed max-w-xs mb-6">
+        Choose a conversation from the list, or start a new one by browsing the alumni directory.
+      </p>
+      <button onClick={onBrowse} className="btn-primary h-10 px-5 text-sm gap-2">
+        <Plus className="w-4 h-4" /> New Conversation
+      </button>
+    </div>
+  );
+}
+
+// ── Date Divider ─────────────────────────────────────────────────────────────
+function DateDivider({ date }) {
+  const d = new Date(date);
+  const label = isToday(d) ? "Today" : isYesterday(d) ? "Yesterday" : format(d, "EEEE, MMMM d");
+  return (
+    <div className="flex items-center gap-3 py-2">
+      <div className="flex-1 h-px bg-[var(--border)]" />
+      <span className="text-[11px] font-semibold text-[var(--text-3)] px-2">{label}</span>
+      <div className="flex-1 h-px bg-[var(--border)]" />
+    </div>
+  );
+}
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function MessagesPage() {
   const dispatch = useDispatch();
-  const socket = getSocket();
-  const { user, onlineUsers } = useSelector((s) => s.auth);
-  const { conversations, activeConvId, messages, unread, typingUsers } = useSelector((s) => s.chat);
-  
-  const [inputText, setInputText] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [msgLoading, setMsgLoading] = useState(false);
-  const scrollRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
+  const router   = useRouter();
+  const socket   = getSocket();
 
-  const activeConv = useMemo(() => conversations.find(c => c._id === activeConvId), [conversations, activeConvId]);
-  
+  const { user, onlineUsers }                              = useSelector(s => s.auth);
+  const { conversations, activeConvId, messages, unread, typingUsers } = useSelector(s => s.chat);
+
+  const [inputText,   setInputText]   = useState("");
+  const [loading,     setLoading]     = useState(true);
+  const [msgLoading,  setMsgLoading]  = useState(false);
+  const [menuOpen,    setMenuOpen]    = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const scrollRef        = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const inputRef         = useRef(null);
+
+  const activeConv = useMemo(() =>
+    conversations.find(c => c._id === activeConvId), [conversations, activeConvId]);
+
   const otherParticipant = useMemo(() => {
     if (!activeConv || activeConv.isGroupChat) return null;
     return activeConv.participants.find(p => p._id !== user?._id);
   }, [activeConv, user]);
 
   const isOtherOnline = onlineUsers.includes(otherParticipant?._id);
+  const currentMessages = messages[activeConvId] || [];
 
+  const filteredConvs = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const q = searchQuery.toLowerCase();
+    return conversations.filter(c => {
+      const partner = c.participants.find(p => p._id !== user?._id);
+      const name = c.isGroupChat ? c.name : `${partner?.firstName} ${partner?.lastName}`;
+      return name.toLowerCase().includes(q);
+    });
+  }, [conversations, searchQuery, user]);
+
+  /* Fetch convs */
   useEffect(() => {
     const fetchConvs = async () => {
       try {
         const { data } = await api.get("/messages");
         dispatch(setConversations(data.data));
-        
-        // If there's a convId in URL, select it
         const urlParams = new URLSearchParams(window.location.search);
         const convId = urlParams.get("convId");
         if (convId) selectConv(convId);
-      } catch (err) {
-        toast.error("Failed to load conversations");
-      } finally {
-        setLoading(false);
-      }
+      } catch { toast.error("Failed to load conversations"); }
+      finally { setLoading(false); }
     };
     fetchConvs();
   }, [dispatch]);
+
+  /* Auto-scroll */
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [currentMessages, typingUsers]);
+
+  /* Focus input when conv changes */
+  useEffect(() => {
+    if (activeConvId) setTimeout(() => inputRef.current?.focus(), 200);
+  }, [activeConvId]);
 
   const selectConv = async (id) => {
     if (id === activeConvId) return;
     dispatch(setActiveConv(id));
     setMsgLoading(true);
+    setMenuOpen(false);
     try {
       const { data } = await api.get(`/messages/${id}`);
-      dispatch(setMessages({ convId: id, messages: data.data.data }));
-      socket?.emit("join_room", id);
+      dispatch(setMessages({ convId: id, messages: data.data }));
+      socket?.emit("join_conv", id);
       socket?.emit("mark_read", { convId: id });
-    } catch (err) {
-      toast.error("Failed to load messages");
-    } finally {
-      setMsgLoading(false);
-    }
+    } catch { toast.error("Failed to load messages"); }
+    finally { setMsgLoading(false); }
   };
 
   const handleTyping = (e) => {
     setInputText(e.target.value);
-    
     if (!socket || !activeConvId) return;
-
     socket.emit("typing", { convId: activeConvId });
-
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       socket.emit("stop_typing", { convId: activeConvId });
-    }, 3000);
+    }, 2500);
   };
 
-  const handleSendMessage = async (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!inputText.trim() || !activeConvId) return;
-
     const text = inputText;
     setInputText("");
     socket?.emit("stop_typing", { convId: activeConvId });
-
     try {
       await api.post(`/messages/${activeConvId}`, { text });
-    } catch (err) {
-      toast.error("Failed to send message");
-      setInputText(text);
-    }
+    } catch { toast.error("Failed to send message"); setInputText(text); }
   };
 
   const clearChat = async () => {
-    if (!activeConvId || !confirm("Clear all messages in this chat?")) return;
+    if (!activeConvId || !confirm("Clear all messages?")) return;
     try {
       await api.delete(`/messages/${activeConvId}/clear`);
       dispatch(setMessages({ convId: activeConvId, messages: [] }));
-      toast.success("Chat cleared");
-    } catch (err) {
-      toast.error("Failed to clear chat");
-    }
+      toast.success("Chat cleared"); setMenuOpen(false);
+    } catch { toast.error("Failed to clear chat"); }
   };
 
   const deleteConv = async () => {
@@ -123,323 +355,294 @@ export default function MessagesPage() {
       dispatch(setActiveConv(null));
       const { data } = await api.get("/messages");
       dispatch(setConversations(data.data));
-      toast.success("Conversation deleted");
-    } catch (err) {
-      toast.error("Failed to delete conversation");
-    }
+      toast.success("Conversation deleted"); setMenuOpen(false);
+    } catch { toast.error("Failed to delete conversation"); }
   };
 
-  const currentMessages = messages[activeConvId] || [];
-  
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [currentMessages, typingUsers]);
-
-  const formatTime = (date) => {
-    const d = new Date(date);
-    if (isToday(d)) return format(d, "HH:mm");
-    if (isYesterday(d)) return "Yesterday";
-    return format(d, "MMM d");
-  };
+  /* Group messages by date */
+  const groupedMessages = useMemo(() => {
+    const groups = [];
+    let lastDate = null;
+    currentMessages.forEach((msg, i) => {
+      const d = format(new Date(msg.createdAt), "yyyy-MM-dd");
+      if (d !== lastDate) { groups.push({ type: "divider", date: msg.createdAt }); lastDate = d; }
+      groups.push({ type: "msg", msg, index: i });
+    });
+    return groups;
+  }, [currentMessages]);
 
   if (loading) return (
-    <div className="flex h-[calc(100vh-100px)] items-center justify-center bg-white dark:bg-slate-900 rounded-3xl">
-      <Loader2 className="animate-spin text-primary w-8 h-8" />
+    <div className="flex h-full items-center justify-center" style={{ background: "var(--bg)" }}>
+      <Loader2 className="w-7 h-7 animate-spin" style={{ color: "rgb(var(--primary-rgb))" }} />
     </div>
   );
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-white dark:bg-[#020617]">
-      {/* Sidebar: Conversations List */}
-      <div className={clsx(
-        "w-full md:w-80 md:min-w-[320px] border-r border-slate-100 dark:border-slate-800/80 flex flex-col bg-slate-50/50 dark:bg-slate-900/30",
-        activeConvId ? "hidden md:flex" : "flex"
-      )}>
-        <div className="p-5 border-b border-slate-50 dark:border-slate-800/50">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Messages</h2>
-            <button className="p-2 bg-primary/10 dark:bg-indigo-900/40 text-primary rounded-xl hover:bg-primary/20 transition-colors">
-              <Plus className="w-5 h-5" />
+    <div className="flex h-full overflow-hidden" style={{ background: "var(--bg)" }}>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          LEFT: Conversations list
+      ═══════════════════════════════════════════════════════════════════ */}
+      <div
+        className={cn(
+          "flex flex-col border-r border-[var(--border)]",
+          "w-full md:w-[320px] md:flex-shrink-0",
+          activeConvId ? "hidden md:flex" : "flex"
+        )}
+        style={{ background: "var(--surface)" }}
+      >
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[18px] font-bold text-[var(--text-1)] tracking-tight">Messages</h2>
+            <button
+              onClick={() => router.push("/directory")}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+              style={{ background: "var(--primary-alpha)", color: "rgb(var(--primary-rgb))" }}
+              title="New conversation"
+            >
+              <Plus className="w-4 h-4" />
             </button>
           </div>
+          {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search conversations..." 
-              className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" 
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--text-3)" }} />
+            <input
+              type="text"
+              placeholder="Search…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full text-[13px] py-2 pl-9 pr-4 rounded-xl outline-none border border-[var(--border)] transition-all"
+              style={{
+                background: "var(--surface-2)",
+                color: "var(--text-1)",
+              }}
+              onFocus={(e) => e.target.style.borderColor = "rgb(var(--primary-rgb))"}
+              onBlur={(e) => e.target.style.borderColor = "var(--border)"}
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {conversations.length > 0 ? conversations.map((conv) => {
-            const partner = conv.participants.find(p => p._id !== user?._id);
-            const isSelected = activeConvId === conv._id;
-            const isOnline = partner && onlineUsers.includes(partner._id);
-            const convUnread = unread[conv._id] || 0;
-            const isTyping = typingUsers[conv._id]?.length > 0;
-
-            return (
-              <button
-                key={conv._id}
-                onClick={() => selectConv(conv._id)}
-                className={clsx(
-                  "w-full px-5 py-4 flex gap-4 text-left transition-all duration-200 relative",
-                  isSelected 
-                    ? "bg-primary/10/50 dark:bg-indigo-950/30" 
-                    : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                )}
-              >
-                {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />}
-                
-                <div className="relative shrink-0">
-                  <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-sm">
-                    {partner?.avatar ? (
-                      <Image src={partner.avatar} fill alt="P" className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-lg">
-                        {partner?.firstName?.[0]}
-                      </div>
-                    )}
-                  </div>
-                  {isOnline && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full shadow-sm" />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className={clsx(
-                      "font-bold text-[14px] truncate leading-none",
-                      convUnread > 0 ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"
-                    )}>
-                      {conv.isGroupChat ? conv.name : `${partner?.firstName} ${partner?.lastName}`}
-                    </h3>
-                    <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
-                      {conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ""}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className={clsx(
-                      "text-xs truncate flex-1",
-                      isTyping ? "text-primary font-medium italic" : convUnread > 0 ? "text-slate-900 dark:text-white font-bold" : "text-slate-500"
-                    )}>
-                      {isTyping ? "Typing..." : conv.lastMessage?.text || "Started a conversation"}
-                    </p>
-                    {convUnread > 0 && (
-                      <span className="bg-primary text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-lg shadow-indigo-200 dark:shadow-none">
-                        {convUnread}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            );
-          }) : (
-            <div className="p-10 text-center text-slate-400">
-              <p className="text-sm font-medium">No results found</p>
+        {/* Conv list */}
+        <div className="flex-1 overflow-y-auto py-1">
+          {filteredConvs.length > 0 ? filteredConvs.map(conv => (
+            <ConvItem
+              key={conv._id}
+              conv={conv}
+              isSelected={activeConvId === conv._id}
+              onSelect={selectConv}
+              myId={user?._id}
+              onlineUsers={onlineUsers}
+              unread={unread}
+              typingUsers={typingUsers}
+            />
+          )) : (
+            <div className="p-10 text-center">
+              <p className="text-[13px] text-[var(--text-3)]">No conversations found</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Main: Chat Window */}
-      <div className={clsx(
-        "flex-1 flex-col bg-[#efeae2] dark:bg-[#0b141a] relative", 
-        activeConvId ? "flex" : "hidden md:flex"
-      )}>
+      {/* ═══════════════════════════════════════════════════════════════════
+          RIGHT: Chat window
+      ═══════════════════════════════════════════════════════════════════ */}
+      <div
+        className={cn(
+          "flex-1 flex-col relative overflow-hidden",
+          activeConvId ? "flex" : "hidden md:flex"
+        )}
+        style={{ background: "var(--chat-bg)" }}
+      >
         {activeConvId ? (
           <>
-            {/* Window Header - WhatsApp style */}
-            <div className="absolute top-0 left-0 right-0 z-20 h-16 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between px-2 sm:px-4 shadow-sm">
-              <div className="flex items-center gap-2 sm:gap-4">
-                <button 
+            {/* ── Chat Header ─────────────────────────────────── */}
+            <div
+              className="absolute top-0 left-0 right-0 z-20 h-14 flex items-center justify-between px-4 border-b border-[var(--border)]"
+              style={{ background: "var(--surface)", backdropFilter: "blur(8px)" }}
+            >
+              {/* Left: back + avatar + info */}
+              <div className="flex items-center gap-3">
+                <button
                   onClick={() => dispatch(setActiveConv(null))}
-                  className="md:hidden p-2 -ml-1 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full"
+                  className="md:hidden p-2 -ml-2 rounded-xl transition-colors btn-ghost"
                 >
-                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="css-i6dzq1"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                  <ArrowLeft className="w-4 h-4" />
                 </button>
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-[18px] overflow-hidden bg-slate-100 dark:bg-slate-800 ring-2 ring-primary/10 dark:ring-indigo-900/30 ring-offset-2 dark:ring-offset-slate-900 shadow-sm relative">
-                    {otherParticipant?.avatar ? (
-                      <Image src={otherParticipant.avatar} fill alt="P" className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/20 text-primary font-bold text-lg">
-                        {otherParticipant?.firstName?.[0] || "?"}
-                      </div>
-                    )}
+
+                {otherParticipant?.avatar ? (
+                  <div className="w-9 h-9 rounded-full overflow-hidden relative flex-shrink-0">
+                    <Image src={otherParticipant.avatar} fill sizes="36px" alt="" className="object-cover" />
                   </div>
-                  {isOtherOnline && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 border-[3px] border-white dark:border-slate-900 rounded-full shadow-sm z-10" />
-                  )}
-                </div>
+                ) : (
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    style={{ background: "var(--primary-alpha)", color: "rgb(var(--primary-rgb))" }}
+                  >
+                    {otherParticipant?.firstName?.[0]}{otherParticipant?.lastName?.[0]}
+                  </div>
+                )}
+
                 <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white leading-none mb-1">
-                    {activeConv?.isGroupChat ? activeConv.name : `${otherParticipant?.firstName} ${otherParticipant?.lastName}`}
-                  </h3>
-                  <div className="flex items-center gap-1.5">
-                    <p className={clsx("text-[10px] font-black uppercase tracking-widest", isOtherOnline ? "text-emerald-500" : "text-slate-400")}>
-                      {isOtherOnline ? "Online Now" : "Currently Offline"}
-                    </p>
-                  </div>
+                  <Link
+                    href={`/profile/${otherParticipant?._id}`}
+                    className="text-[14px] font-bold text-[var(--text-1)] tracking-tight hover:text-[rgb(var(--primary-rgb))] transition-colors leading-tight block"
+                  >
+                    {activeConv?.isGroupChat
+                      ? activeConv.name
+                      : `${otherParticipant?.firstName} ${otherParticipant?.lastName}`}
+                  </Link>
+                  <p className={cn(
+                    "text-[11px] font-medium leading-none mt-0.5",
+                    isOtherOnline ? "text-emerald-500" : "text-[var(--text-3)]"
+                  )}>
+                    {isOtherOnline ? "● Online" : "Offline"}
+                  </p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => router.push(`/profile/${otherParticipant?._id}`)}
-                  className="hidden sm:flex btn-ghost p-2 text-slate-500 hover:text-primary rounded-xl"
-                  title="View Profile"
+
+              {/* Right: actions */}
+              <div className="flex items-center gap-1 relative">
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="btn-ghost w-8 h-8 p-0 rounded-xl"
                 >
-                  <User className="w-5 h-5" />
+                  <MoreVertical className="w-4 h-4" />
                 </button>
-                <div className="relative group">
-                  <button className="p-2 text-slate-400 hover:text-primary hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-100">
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                  <div className="absolute right-0 top-full mt-2 w-48 card p-1 shadow-2xl invisible group-hover:visible z-30 ring-1 ring-slate-100 dark:ring-slate-800">
-                    <button onClick={clearChat} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" /> Clear History
-                    </button>
-                    <button onClick={deleteConv} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" /> Delete Chat
-                    </button>
-                  </div>
-                </div>
+
+                <AnimatePresence>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute right-0 top-full mt-2 w-48 border rounded-2xl shadow-[var(--shadow-lg)] p-1.5 z-50"
+                        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                      >
+                        <button onClick={clearChat} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[13px] text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:text-[var(--text-1)] rounded-xl transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" /> Clear history
+                        </button>
+                        <button onClick={deleteConv} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" /> Delete chat
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-20 pb-24 space-y-4 flex flex-col custom-scrollbar bg-[url('https://static.whatsapp.net/rsrc.php/v3/yl/r/r2qE3tKjM_M.png')] dark:bg-[url('https://static.whatsapp.net/rsrc.php/v3/yl/r/r2qE3tKjM_M.png')] bg-repeat opacity-95">
-              <div className="flex-1" />
-              {currentMessages.length > 0 ? (
-                currentMessages.map((msg, i) => {
-                  const isMine = msg.sender?._id === user?._id || msg.sender === user?._id;
-                  const showAvatar = !isMine && (i === 0 || (currentMessages[i-1]?.sender?._id || currentMessages[i-1]?.sender) !== (msg.sender?._id || msg.sender));
-                  
-                  return (
-                    <div key={msg._id || i} className={clsx("flex group", isMine ? "justify-end" : "justify-start animate-in fade-in slide-in-from-bottom-2 duration-500")}>
-                      {!isMine && (
-                        <div className="w-8 mr-3 shrink-0 self-end mb-1">
-                          {showAvatar && (
-                            <Link href={`/profile/${msg.sender?._id || msg.sender}`} className="w-8 h-8 rounded-xl overflow-hidden relative shadow-sm hover:scale-110 transition-transform block">
-                               {msg.sender?.avatar ? <Image src={msg.sender.avatar} fill className="object-cover" /> : <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">{msg.sender?.firstName?.[0]}</div>}
-                            </Link>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className={clsx("max-w-[75%] sm:max-w-[65%] relative flex flex-col", isMine ? "items-end" : "items-start")}>
-                        <div className={clsx(
-                          "px-3 py-2 text-[14.5px] leading-relaxed shadow-sm transition-all relative overflow-hidden text-slate-800 dark:text-slate-100",
-                          isMine 
-                            ? "bg-[#d9fdd3] dark:bg-[#005c4b] rounded-xl rounded-tr-none" 
-                            : "bg-white dark:bg-[#202c33] rounded-xl rounded-tl-none"
-                        )}>
-                          {isMine && <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" />}
-                          <p className="whitespace-pre-wrap relative z-10">{msg.text}</p>
-                        </div>
-                        <div className={clsx("flex items-center gap-1.5 mt-1.5 px-1 font-bold text-[9px] uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity duration-300", isMine ? "flex-row-reverse text-indigo-400" : "text-slate-400")}>
-                          <span>{format(new Date(msg.createdAt), "h:mm a")}</span>
-                          {isMine && (msg.readBy?.length > 1 ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />)}
-                        </div>
+            {/* ── Messages ─────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto pt-16 pb-20 px-4 sm:px-6 space-y-1">
+              <div className="flex-1 flex flex-col-reverse" />
+              <div className="space-y-1">
+                {groupedMessages.length > 0 ? (
+                  groupedMessages.map((item, idx) => {
+                    if (item.type === "divider") {
+                      return <DateDivider key={`d-${idx}`} date={item.date} />;
+                    }
+                    const { msg, index } = item;
+                    const isMine = msg.sender?._id === user?._id || msg.sender === user?._id;
+                    const prevSender = index > 0 ? (currentMessages[index - 1]?.sender?._id || currentMessages[index - 1]?.sender) : null;
+                    const currSender = msg.sender?._id || msg.sender;
+                    const showAvatar = !isMine && prevSender !== currSender;
+
+                    return (
+                      <MessageBubble
+                        key={msg._id || idx}
+                        msg={msg}
+                        isMine={isMine}
+                        showAvatar={showAvatar}
+                      />
+                    );
+                  })
+                ) : (
+                  !msgLoading && (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                        style={{ background: "var(--surface-2)" }}>
+                        <MessageSquare className="w-6 h-6" style={{ color: "var(--text-3)" }} />
                       </div>
+                      <p className="text-[13px] font-semibold text-[var(--text-2)]">No messages yet</p>
+                      <p className="text-[12px] text-[var(--text-3)] mt-1">Say hello! 👋</p>
                     </div>
-                  );
-                })
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-300 py-10">
-                  <div className="w-20 h-20 rounded-[2.5rem] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
-                    <MessageSquare className="w-10 h-10 text-slate-400" />
+                  )
+                )}
+
+                {/* Loading spinner */}
+                {msgLoading && (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--text-3)" }} />
                   </div>
-                  <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No messages yet</p>
-                  <p className="text-xs text-slate-400 mt-1 opacity-60 font-medium italic">Your conversation is ready!</p>
-                </div>
-              )}
-              
-              {/* Typing indicators */}
-              {typingUsers[activeConvId]?.length > 0 && (
-                <div className="flex gap-2 items-center text-slate-400 animate-pulse ml-11">
-                  <div className="flex gap-1.5 p-3 px-4 bg-white dark:bg-slate-800 rounded-3xl rounded-bl-none border border-slate-100 dark:border-slate-700/50 shadow-sm shadow-primary/10/50">
-                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-duration:1s]" />
-                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.2s]" />
-                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.4s]" />
-                  </div>
-                </div>
-              )}
-              
-              <div ref={scrollRef} className="pt-2" />
+                )}
+
+                {/* Typing indicator */}
+                <AnimatePresence>
+                  {typingUsers[activeConvId]?.length > 0 && <TypingBubble />}
+                </AnimatePresence>
+
+                <div ref={scrollRef} />
+              </div>
             </div>
 
-            {/* Input Area */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 pb-4 pt-3 px-3 sm:px-6 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-200/50 dark:border-slate-800/50 shadow-sm">
-              <form onSubmit={handleSendMessage} className="flex items-end gap-3 max-w-5xl mx-auto">
-                <button type="button" className="p-3.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-primary rounded-2xl transition-all shadow-sm border border-slate-100 dark:border-slate-700 hover:scale-110 active:scale-95">
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                
-                <div className="flex-1 relative group bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 focus-within:ring-4 focus-within:ring-primary/10 transition-all duration-300">
+            {/* ── Input bar ────────────────────────────────────── */}
+            <div
+              className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-4 pt-2 border-t border-[var(--border)]"
+              style={{ background: "var(--surface)" }}
+            >
+              <form onSubmit={handleSend} className="flex items-end gap-2.5">
+                {/* Textarea */}
+                <div
+                  className="flex-1 relative rounded-2xl border border-[var(--border)] overflow-hidden transition-all focus-within:border-[rgb(var(--primary-rgb))] focus-within:shadow-[0_0_0_3px_rgba(67,56,202,0.10)]"
+                  style={{ background: "var(--surface-2)" }}
+                >
                   <textarea
+                    ref={inputRef}
                     rows={1}
-                    placeholder="Type your message..."
-                    className="w-full bg-transparent border-none rounded-3xl py-4 pl-6 pr-14 text-[14px] font-medium text-slate-700 dark:text-slate-200 focus:ring-0 transition-all resize-none max-h-32 custom-scrollbar"
+                    placeholder="Message…"
                     value={inputText}
                     onChange={handleTyping}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage(e);
-                      }
+                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(e); }
                     }}
+                    className="w-full bg-transparent py-3 pl-4 pr-11 text-[14px] leading-snug resize-none outline-none max-h-32"
+                    style={{ color: "var(--text-1)" }}
                   />
-                  <button type="button" className="absolute right-4 top-3.5 p-1 text-slate-400 hover:text-primary hover:rotate-12 transition-all">
-                    <Smile className="w-6 h-6" />
+                  <button
+                    type="button"
+                    className="absolute right-3 bottom-2.5 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
+                  >
+                    <Smile className="w-5 h-5" />
                   </button>
                 </div>
-                
-                <button 
-                  type="submit" 
-                  disabled={!inputText.trim()} 
-                  className={clsx(
-                    "p-4 rounded-3xl shadow-2xl transition-all transform active:scale-90 flex items-center justify-center",
-                    inputText.trim() 
-                      ? "bg-primary text-white shadow-primary/30 hover:bg-indigo-700 hover:-translate-y-0.5" 
-                      : "bg-slate-100 text-slate-300 cursor-not-allowed"
+
+                {/* Send */}
+                <motion.button
+                  type="submit"
+                  disabled={!inputText.trim()}
+                  whileTap={{ scale: 0.92 }}
+                  whileHover={{ scale: 1.05 }}
+                  className={cn(
+                    "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors",
+                    inputText.trim()
+                      ? "shadow-[var(--shadow-primary)]"
+                      : "opacity-40 cursor-not-allowed"
                   )}
+                  style={{
+                    background: inputText.trim() ? "rgb(var(--primary-rgb))" : "var(--surface-3)",
+                    color: inputText.trim() ? "#fff" : "var(--text-3)",
+                  }}
                 >
-                  <Send className={clsx("w-5 h-5", inputText.trim() && "animate-in slide-in-from-bottom-2")} />
-                </button>
+                  <Send className="w-4 h-4" />
+                </motion.button>
               </form>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white/40 dark:bg-slate-900/40">
-            <div className="relative mb-10 group">
-              <div className="absolute -inset-10 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
-              <div className="w-28 h-28 bg-white dark:bg-slate-800 rounded-[3rem] shadow-2xl flex items-center justify-center relative z-10 animate-in zoom-in-50 duration-700">
-                <div className="w-20 h-20 bg-primary/10 dark:bg-indigo-950/30 rounded-[2rem] flex items-center justify-center">
-                  <MessageSquare className="w-10 h-10 text-primary" />
-                </div>
-              </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full border-4 border-white dark:border-slate-900 shadow-xl z-20 animate-bounce [animation-duration:2s]" />
-            </div>
-            <div className="text-center max-w-sm px-6">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3">Your Inbox</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-bold opacity-80 mb-8">
-                Connect with fellow alumni, share ideas, and build lasting relationships. Select a chat to start messaging!
-              </p>
-              <button 
-                onClick={() => router.push("/directory")}
-                className="btn-primary w-full py-4 rounded-[20px] shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 flex items-center justify-center gap-3 transition-all"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Start New Conversation</span>
-              </button>
-            </div>
-          </div>
+          <EmptyInbox onBrowse={() => router.push("/directory")} />
         )}
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { setUser } from "@/lib/slices/authSlice";
-import { Save, Camera, Loader2, ArrowLeft, Globe, MapPin, Briefcase, Info } from "lucide-react";
+import { Save, Camera, Loader2, ArrowLeft, Globe, MapPin, Briefcase, Info, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -23,6 +23,8 @@ export default function ProfileEditPage() {
     batch: "",
     department: "",
     website: "",
+    education: [],
+    experience: [],
   });
 
   const hasInitialized = useRef(false);
@@ -38,6 +40,8 @@ export default function ProfileEditPage() {
         batch: user.batch || "",
         department: user.department || "",
         website: user.website || "",
+        education: user.education || [],
+        experience: user.experience || [],
       });
       hasInitialized.current = true;
     }
@@ -45,6 +49,48 @@ export default function ProfileEditPage() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // ── Education Handlers ──────────────────────────────────────────
+  const addEducation = () => {
+    setFormData({
+      ...formData,
+      education: [...formData.education, { school: "", degree: "", fieldOfStudy: "", from: "", to: "", current: false, description: "" }]
+    });
+  };
+
+  const removeEducation = (index) => {
+    setFormData({
+      ...formData,
+      education: formData.education.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateEducation = (index, field, value) => {
+    const nextEd = [...formData.education];
+    nextEd[index] = { ...nextEd[index], [field]: value };
+    setFormData({ ...formData, education: nextEd });
+  };
+
+  // ── Experience Handlers ─────────────────────────────────────────
+  const addExperience = () => {
+    setFormData({
+      ...formData,
+      experience: [...formData.experience, { title: "", company: "", location: "", from: "", to: "", current: false, description: "" }]
+    });
+  };
+
+  const removeExperience = (index) => {
+    setFormData({
+      ...formData,
+      experience: formData.experience.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateExperience = (index, field, value) => {
+    const nextEx = [...formData.experience];
+    nextEx[index] = { ...nextEx[index], [field]: value };
+    setFormData({ ...formData, experience: nextEx });
   };
 
   const handleSubmit = async (e) => {
@@ -80,7 +126,7 @@ export default function ProfileEditPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto pt-6 px-6 pb-10">
+    <div className="max-w-3xl mx-auto pt-6 px-6 pb-20">
       <div className="flex items-center gap-4 mb-8">
         <button onClick={() => router.back()} className="btn-ghost p-2 rounded-full">
           <ArrowLeft className="w-5 h-5" />
@@ -91,9 +137,9 @@ export default function ProfileEditPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Media Section */}
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden border-primary/20 bg-primary/[0.02]">
           <div className="p-5 border-b flex items-center gap-2">
             <Camera className="w-5 h-5 text-primary" />
             <h2 className="font-bold">Profile Media</h2>
@@ -137,11 +183,104 @@ export default function ProfileEditPage() {
           </div>
         </div>
 
+        {/* Dynamic Experience & Education */}
+        <div className="space-y-6">
+          {/* Experience Section */}
+          <div className="card">
+            <div className="p-5 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-primary" />
+                <h2 className="font-bold">Experience</h2>
+              </div>
+              <button onClick={addExperience} className="btn-secondary h-8 px-3 text-xs gap-1.5 rounded-lg">
+                <span className="text-lg">+</span> Add Experience
+              </button>
+            </div>
+            <div className="p-5 space-y-6">
+              {formData.experience.length === 0 && (
+                <p className="text-center py-4 text-slate-400 text-sm">No experience listed.</p>
+              )}
+              {formData.experience.map((ex, i) => (
+                <div key={i} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 relative">
+                  <button onClick={() => removeExperience(i)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">Title</label>
+                      <input value={ex.title} onChange={e => updateExperience(i, "title", e.target.value)} className="input h-9 text-sm" placeholder="Job title" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">Company</label>
+                      <input value={ex.company} onChange={e => updateExperience(i, "company", e.target.value)} className="input h-9 text-sm" placeholder="Company name" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">From</label>
+                      <input value={ex.from} onChange={e => updateExperience(i, "from", e.target.value)} className="input h-9 text-sm" placeholder="MM/YYYY" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">To (or "Present")</label>
+                      <input value={ex.to} onChange={e => updateExperience(i, "to", e.target.value)} className="input h-9 text-sm" placeholder="MM/YYYY" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Education Section */}
+          <div className="card">
+            <div className="p-5 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Info className="w-5 h-5 text-primary" />
+                <h2 className="font-bold">Education</h2>
+              </div>
+              <button onClick={addEducation} className="btn-secondary h-8 px-3 text-xs gap-1.5 rounded-lg">
+                <span className="text-lg">+</span> Add Education
+              </button>
+            </div>
+            <div className="p-5 space-y-6">
+              {formData.education.length === 0 && (
+                <p className="text-center py-4 text-slate-400 text-sm">No education listed.</p>
+              )}
+              {formData.education.map((ed, i) => (
+                <div key={i} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 relative">
+                  <button onClick={() => removeEducation(i)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">School / University</label>
+                      <input value={ed.school} onChange={e => updateEducation(i, "school", e.target.value)} className="input h-9 text-sm" placeholder="University name" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">Degree</label>
+                      <input value={ed.degree} onChange={e => updateEducation(i, "degree", e.target.value)} className="input h-9 text-sm" placeholder="B.Tech, MBA etc." />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">Field of Study</label>
+                      <input value={ed.fieldOfStudy} onChange={e => updateEducation(i, "fieldOfStudy", e.target.value)} className="input h-9 text-sm" placeholder="Computer Science" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">From</label>
+                      <input value={ed.from} onChange={e => updateEducation(i, "from", e.target.value)} className="input h-9 text-sm" placeholder="YYYY" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase">To</label>
+                      <input value={ed.to} onChange={e => updateEducation(i, "to", e.target.value)} className="input h-9 text-sm" placeholder="YYYY" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Basic Info Form */}
         <form onSubmit={handleSubmit} className="card p-6 space-y-6">
           <div className="flex items-center gap-2 mb-2">
             <Info className="w-5 h-5 text-primary" />
-            <h2 className="font-bold">Basic Information</h2>
+            <h2 className="font-bold">Other Information</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -187,14 +326,14 @@ export default function ProfileEditPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 ml-1">Batch Year</label>
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 ml-1">Current Batch Year</label>
               <select name="batch" value={formData.batch} onChange={handleChange} className="input h-[50px]">
                 <option value="">Select Year</option>
                 {Array.from({ length: 31 }, (_, i) => 2000 + i).map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 ml-1">Department</label>
+              <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 ml-1">Current Department</label>
               <select name="department" value={formData.department} onChange={handleChange} className="input h-[50px]">
                 <option value="">Select Department</option>
                 <option value="Computer Science">Computer Science</option>
@@ -206,10 +345,10 @@ export default function ProfileEditPage() {
             </div>
           </div>
 
-          <div className="pt-4">
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3 flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
+          <div className="pt-4 sticky bottom-6 z-20">
+            <button type="submit" disabled={loading} className="btn-primary w-full py-4 flex items-center justify-center gap-2 shadow-xl shadow-primary/20 scale-105 transition-transform">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              Save Profile Changes
+              Save All Profile Changes
             </button>
           </div>
         </form>

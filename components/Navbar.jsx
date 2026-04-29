@@ -5,12 +5,12 @@ import { clearUser } from "@/lib/slices/authSlice";
 import { disconnectSocket } from "@/lib/socket";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { Bell, MessageSquare, Search, LogOut, User, Settings, Menu } from "lucide-react";
-import { useState } from "react";
-import Image from "next/image";
+import { Bell, MessageSquare, Search, LogOut, User, Settings, Menu, X, LayoutDashboard } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export default function Navbar({ onMenuClick }) {
   const dispatch = useDispatch();
@@ -20,8 +20,27 @@ export default function Navbar({ onMenuClick }) {
   const chatUnread = useSelector((s) =>
     Object.values(s.chat.unread).reduce((a, b) => a + b, 0)
   );
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const menuRef = useRef(null);
+
+  // Detect scroll for navbar shadow
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const logout = async () => {
     await api.post("/auth/logout");
@@ -31,129 +50,202 @@ export default function Navbar({ onMenuClick }) {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-      <div className="flex items-center justify-between h-full px-4 max-w-7xl mx-auto gap-4">
-        {/* Left: Logo + mobile menu */}
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 h-14 transition-all duration-200",
+        scrolled
+          ? "bg-[var(--surface)]/90 backdrop-blur-xl shadow-[var(--shadow-sm)] border-b border-[var(--border)]"
+          : "bg-[var(--surface)] border-b border-[var(--border)]"
+      )}
+    >
+      <div className="h-full flex items-center justify-between px-4 sm:px-6 max-w-[1400px] mx-auto gap-4">
+
+        {/* ── Left: Logo ────────────────────────────────────── */}
         <div className="flex items-center gap-3 shrink-0">
-          <button onClick={onMenuClick} className="btn-ghost lg:hidden p-2">
-            <Menu className="w-6 h-6" />
-          </button>
-          <Link href="/feed" className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-white font-black text-sm">A</span>
+          {isLoggedIn && (
+            <button
+              onClick={onMenuClick}
+              className="btn-ghost p-2 lg:hidden -ml-2"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
+          <Link href={isLoggedIn ? "/feed" : "/"} className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 bg-[rgb(var(--primary-rgb))] rounded-[10px] flex items-center justify-center shadow-[var(--shadow-primary)] transition-transform group-hover:scale-105">
+              <span className="text-white font-black text-sm tracking-tight">G</span>
             </div>
-            <span className="hidden sm:block font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">AlumniConnect</span>
+            <span className="hidden sm:block font-extrabold text-[15px] tracking-[-0.04em] text-[var(--text-1)]">
+              GradLink
+            </span>
           </Link>
         </div>
 
-        {/* Center: Search (Desktop) */}
-        {!mobileSearchOpen && (
-          <div className="hidden md:flex flex-1 max-w-md mx-6">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="search"
-                placeholder="Search alumni, posts..."
-                className="input py-2 pl-9 pr-4 bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-primary transition-all"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") router.push(`/directory?q=${e.target.value}`);
-                }}
-              />
-            </div>
-          </div>
-        )}
+        {/* ── Center: Search ────────────────────────────────── */}
+        <AnimatePresence>
+          {mobileSearchOpen ? (
+            <motion.div
+              key="mobile-search"
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "100%" }}
+              exit={{ opacity: 0, width: 0 }}
+              className="flex-1 md:hidden overflow-hidden"
+            >
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-3)]" />
+                <input
+                  autoFocus
+                  type="search"
+                  placeholder="Search alumni, posts…"
+                  className="input pl-9 pr-10 py-2 w-full"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { router.push(`/directory?q=${e.target.value}`); setMobileSearchOpen(false); }
+                    if (e.key === "Escape") setMobileSearchOpen(false);
+                  }}
+                />
+                <button
+                  onClick={() => setMobileSearchOpen(false)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="desktop-search"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="hidden md:flex flex-1 max-w-xs mx-4"
+            >
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-3)]" />
+                <input
+                  type="search"
+                  placeholder="Search…"
+                  className="input pl-9 py-2 text-sm w-full"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") router.push(`/directory?q=${e.target.value}`);
+                  }}
+                />
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden xl:flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-3)] bg-[var(--surface-3)] rounded-md border border-[var(--border)]">
+                  ⌘K
+                </kbd>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Mobile Search Input (when toggled) */}
-        {mobileSearchOpen && (
-          <div className="flex-1 md:hidden">
-            <div className="relative w-full">
-              <input
-                autoFocus
-                type="search"
-                placeholder="Search..."
-                className="input py-2 pl-4 pr-10 bg-slate-100 dark:bg-slate-800 border-none w-full"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    router.push(`/directory?q=${e.target.value}`);
-                    setMobileSearchOpen(false);
-                  }
-                }}
-                onBlur={() => setMobileSearchOpen(false)}
-              />
-              <button onClick={() => setMobileSearchOpen(false)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                <LogOut className="w-4 h-4 text-slate-400 rotate-90" />
-              </button>
-            </div>
-          </div>
-        )}
+        {/* ── Right: Icons ──────────────────────────────────── */}
+        <div className="flex items-center gap-1 shrink-0">
+          {isLoggedIn ? (
+            <>
+              <ThemeToggle />
 
-        {/* Right: Nav icons + avatar */}
-        {isLoggedIn ? (
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            {!mobileSearchOpen && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileSearchOpen(true)}
-                className="md:hidden"
-              >
-                <Search className="h-[1.2rem] w-[1.2rem]" />
-              </Button>
-            )}
-            <Link href="/messages">
-              <Button variant="ghost" size="icon" className="relative group">
-                <MessageSquare className="h-[1.2rem] w-[1.2rem]" />
-                {chatUnread > 0 && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 group-hover:scale-110 transition-transform"></span>
-                )}
-              </Button>
-            </Link>
-            <Link href="/notifications">
-              <Button variant="ghost" size="icon" className="relative group">
-                <Bell className="h-[1.2rem] w-[1.2rem]" />
-                {unread > 0 && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 group-hover:scale-110 transition-transform"></span>
-                )}
-              </Button>
-            </Link>
-
-            {/* Avatar dropdown */}
-            <div className="relative ml-2">
-              <button
-                className="rounded-full overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all outline-none"
-                onClick={() => setMenuOpen(!menuOpen)}
-              >
-                <Avatar src={user?.avatar} alt={user?.firstName} size="md" />
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-800 dark:bg-slate-900 z-50 pointer-events-auto" onClick={() => setMenuOpen(false)}>
-                  <div className="px-3 py-3 border-b border-slate-100 dark:border-slate-800 mb-1">
-                    <p className="font-semibold text-sm truncate">{user?.firstName} {user?.lastName}</p>
-                    <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-                  </div>
-                  <Link href={`/profile/${user?._id}`} className="flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-primary rounded-xl transition-colors font-medium">
-                    <User className="w-4 h-4" /> View Profile
-                  </Link>
-                  <Link href="/profile/edit" className="flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-primary rounded-xl transition-colors font-medium">
-                    <Settings className="w-4 h-4" /> Settings
-                  </Link>
-                  <button onClick={logout} className="flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl w-full transition-colors font-medium">
-                    <LogOut className="w-4 h-4" /> Sign out
-                  </button>
-                </div>
+              {/* Mobile search trigger */}
+              {!mobileSearchOpen && (
+                <button
+                  onClick={() => setMobileSearchOpen(true)}
+                  className="btn-ghost p-2 md:hidden"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
               )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link href="/auth">
-              <Button>Sign In</Button>
-            </Link>
-          </div>
-        )}
+
+              {/* Messages */}
+              <Link href="/messages">
+                <button className="btn-ghost relative p-2">
+                  <MessageSquare className="w-5 h-5" />
+                  {chatUnread > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[rgb(var(--primary-rgb))] rounded-full ring-2 ring-[var(--surface)]" />
+                  )}
+                </button>
+              </Link>
+
+              {/* Notifications */}
+              <Link href="/notifications">
+                <button className="btn-ghost relative p-2">
+                  <Bell className="w-5 h-5" />
+                  {unread > 0 && (
+                    <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full px-1 flex items-center justify-center ring-2 ring-[var(--surface)]">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </button>
+              </Link>
+
+              {/* Avatar + Dropdown */}
+              <div className="relative ml-1" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className={cn(
+                    "w-8 h-8 rounded-full overflow-hidden transition-all duration-150 ring-2",
+                    menuOpen
+                      ? "ring-[rgb(var(--primary-rgb))]"
+                      : "ring-transparent hover:ring-[var(--border-strong)]"
+                  )}
+                >
+                  <Avatar src={user?.avatar} alt={user?.firstName} size="sm" />
+                </button>
+
+                <AnimatePresence>
+                  {menuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                      transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-full mt-2 w-60 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow-lg)] p-1.5 z-50"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      {/* User info */}
+                      <div className="px-3.5 py-3 mb-1 border-b border-[var(--border)]">
+                        <p className="font-semibold text-sm text-[var(--text-1)] truncate tracking-tight">
+                          {user?.firstName} {user?.lastName}
+                        </p>
+                        <p className="text-xs text-[var(--text-3)] truncate mt-0.5">{user?.email}</p>
+                      </div>
+                      <Link
+                        href={`/profile/${user?._id}`}
+                        className="flex items-center gap-3 px-3 py-2 text-sm text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:text-[var(--text-1)] rounded-xl transition-colors"
+                      >
+                        <User className="w-4 h-4" /> View Profile
+                      </Link>
+                      <Link
+                        href="/manage-content"
+                        className="flex items-center gap-3 px-3 py-2 text-sm text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:text-[var(--text-1)] rounded-xl transition-colors"
+                      >
+                        <LayoutDashboard className="w-4 h-4" /> Manage Content
+                      </Link>
+                      <Link
+                        href="/profile/edit"
+                        className="flex items-center gap-3 px-3 py-2 text-sm text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:text-[var(--text-1)] rounded-xl transition-colors"
+                      >
+                        <Settings className="w-4 h-4" /> Settings
+                      </Link>
+                      <div className="my-1 border-t border-[var(--border)]" />
+                      <button
+                        onClick={logout}
+                        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" /> Sign out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </>
+          ) : (
+            <>
+              <ThemeToggle />
+              <Link href="/auth">
+                <button className="btn-ghost px-4 h-9 text-sm">Sign In</button>
+              </Link>
+              <Link href="/auth">
+                <button className="btn-primary h-9 px-4 text-sm">Get Started</button>
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

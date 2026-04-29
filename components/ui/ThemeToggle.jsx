@@ -1,24 +1,30 @@
 "use client";
-
 import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
-import { Button } from "./Button";
+import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return <div className="w-9 h-9" />;
+
+  const isDark = resolvedTheme === "dark";
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="relative rounded-full"
+    <button
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="relative w-14 h-7 rounded-full transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-[rgb(var(--primary-rgb))] focus-visible:outline-offset-2"
+      style={{ background: isDark ? "rgb(var(--primary-rgb))" : "var(--surface-3)" }}
+      aria-label="Toggle theme"
     >
-      <div className="relative flex items-center justify-center w-full h-full">
-         <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-slate-800 dark:text-slate-200" />
-         <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-slate-800 dark:text-slate-200" />
-      </div>
-      <span className="sr-only">Toggle theme</span>
-    </Button>
+      {/* Track */}
+      <span
+        className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-300 flex items-center justify-center text-[13px]"
+        style={{ transform: isDark ? "translateX(28px)" : "translateX(0)" }}
+      >
+        {isDark ? "🌙" : "☀️"}
+      </span>
+    </button>
   );
 }

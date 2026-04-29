@@ -2,53 +2,47 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, MessageSquare, Share2, MoreHorizontal, Trash2, Send } from "lucide-react";
+import { Heart, MessageSquare, Share2, MoreHorizontal, Trash2, Send, Edit } from "lucide-react";
 import { useSelector } from "react-redux";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/Card";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function PostCard({ post, onDelete }) {
   const { user } = useSelector((s) => s.auth);
-  const [likes, setLikes] = useState(post.likes?.length || 0);
-  const [isLiked, setIsLiked] = useState(post.likes?.includes(user?._id));
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState("");
+  const [likes,          setLikes]          = useState(post.likes?.length || 0);
+  const [isLiked,        setIsLiked]        = useState(post.likes?.includes(user?._id));
+  const [showComments,   setShowComments]   = useState(false);
+  const [comments,       setComments]       = useState([]);
+  const [newComment,     setNewComment]     = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMenuOpen,     setIsMenuOpen]     = useState(false);
+  const [isEditing,      setIsEditing]      = useState(false);
+  const [editContent,    setEditContent]    = useState(post.content);
+  const [isUpdating,     setIsUpdating]     = useState(false);
+  const [localMedia,    setLocalMedia]    = useState(post.media || []);
+  const [newFiles,      setNewFiles]      = useState([]);
 
   const handleLike = async () => {
     try {
       const { data } = await api.post(`/posts/${post._id}/like`);
       setIsLiked(data.data.liked);
       setLikes(data.data.likeCount);
-    } catch (err) {
-      toast.error("Failed to like post");
-    }
+    } catch { toast.error("Failed to like post"); }
   };
 
   const fetchComments = async () => {
-    if (showComments) {
-      setShowComments(false);
-      return;
-    }
+    if (showComments) { setShowComments(false); return; }
     setLoadingComments(true);
     try {
       const { data } = await api.get(`/posts/${post._id}/comments`);
       setComments(data.data.data);
       setShowComments(true);
-    } catch (err) {
-      toast.error("Failed to load comments");
-    } finally {
-      setLoadingComments(false);
-    }
+    } catch { toast.error("Failed to load comments"); }
+    finally { setLoadingComments(false); }
   };
 
   const handleAddComment = async (e) => {
@@ -58,197 +52,307 @@ export default function PostCard({ post, onDelete }) {
       const { data } = await api.post(`/posts/${post._id}/comments`, { text: newComment });
       setComments([...comments, data.data]);
       setNewComment("");
-    } catch (err) {
-      toast.error("Failed to add comment");
-    }
+    } catch { toast.error("Failed to add comment"); }
   };
 
   const handleShare = () => {
-    const url = `${window.location.origin}/post/${post._id}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied to clipboard!");
+    navigator.clipboard.writeText(`${window.location.origin}/post/${post._id}`);
+    toast.success("Link copied!");
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    if (!confirm("Delete this post?")) return;
     try {
       await api.delete(`/posts/${post._id}`);
       toast.success("Post deleted");
-      if (onDelete) onDelete(post._id);
-    } catch (err) {
-      toast.error("Failed to delete post");
+      onDelete?.(post._id);
+    } catch { toast.error("Failed to delete post"); }
+  };
+
+  const handleUpdate = async () => {
+    if (!editContent.trim()) return;
+    setIsUpdating(true);
+    try {
+      const fd = new FormData();
+      fd.append("content", editContent);
+      fd.append("keptMedia", JSON.stringify(localMedia.map(m => m.url)));
+      newFiles.forEach(f => fd.append("files", f));
+
+      const { data } = await api.put(`/posts/${post._id}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      
+      toast.success("Post updated");
+      setIsEditing(false);
+      // Update local post object
+      post.content = data.data.content;
+      post.media = data.data.media;
+      setLocalMedia(data.data.media);
+      setNewFiles([]);
+    } catch (err) { 
+      toast.error(err.response?.data?.message || "Failed to update post"); 
     }
+    finally { setIsUpdating(false); }
+  };
+
+  const removeLocalMedia = (url) => {
+    setLocalMedia(localMedia.filter(m => m.url !== url));
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (localMedia.length + newFiles.length + files.length > 5) {
+      toast.error("Max 5 files allowed");
+      return;
+    }
+    setNewFiles([...newFiles, ...files]);
   };
 
   return (
-    <Card className="mb-6 overflow-hidden">
-      {/* Header */}
-      <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 space-y-0">
-        <Link href={`/profile/${post.author?._id}`} className="flex items-center gap-3 group">
-          <Avatar src={post.author?.avatar} alt={post.author?.firstName} size="md" />
-          <div>
-            <h3 className="font-semibold text-sm group-hover:text-primary dark:group-hover:text-indigo-400 transition-colors">
+    <article className="bg-[var(--surface)] border-b border-[var(--border)] hover:bg-[var(--surface-2)/30] transition-colors duration-150">
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className="flex items-start justify-between px-5 pt-5 pb-3">
+        <Link href={`/profile/${post.author?._id}`} className="flex items-start gap-3 group min-w-0">
+          <Avatar src={post.author?.avatar} alt={post.author?.firstName} size="md" className="flex-shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <h3 className="font-semibold text-[14px] text-[var(--text-1)] group-hover:text-[rgb(var(--primary-rgb))] transition-colors tracking-tight truncate">
               {post.author?.firstName} {post.author?.lastName}
             </h3>
-            <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-              <span>{post.author?.headline || "Alumni"}</span>
-              <span>•</span>
-              <span>{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}</span>
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              {post.author?.headline && (
+                <span className="text-[12px] text-[var(--text-3)] truncate max-w-[160px]">{post.author.headline}</span>
+              )}
+              {post.author?.headline && <span className="text-[var(--text-3)] text-[10px]">·</span>}
+              <span className="text-[12px] text-[var(--text-3)] flex-shrink-0">
+                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+              </span>
+            </div>
           </div>
         </Link>
-        {post.author?._id === user?._id && (
-          <div className="relative">
-            <Button variant="ghost" size="icon" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              <MoreHorizontal className="w-5 h-5 text-slate-500" />
-            </Button>
-            {isDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                <div className="absolute right-0 mt-1 w-36 rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900 z-50 p-1">
-                  <button
-                    onClick={() => { setIsDropdownOpen(false); handleDelete(); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+
+        {/* Options menu */}
+        {(post.author?._id === user?._id || user?.role === "admin") && (
+          <div className="relative flex-shrink-0 ml-2">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="btn-ghost w-8 h-8 p-0 rounded-lg"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            <AnimatePresence>
+              {isMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                    transition={{ duration: 0.12 }}
+                    className="absolute right-0 mt-1 w-36 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)] z-50 p-1"
                   >
-                    <Trash2 className="w-4 h-4" /> Delete post
-                  </button>
-                </div>
-              </>
-            )}
+                    {post.author?._id === user?._id && (
+                      <button
+                        onClick={() => { setIsMenuOpen(false); setIsEditing(true); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-[var(--text-2)] hover:bg-[var(--surface-2)] rounded-lg transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5" /> Edit post
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setIsMenuOpen(false); handleDelete(); }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete post
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         )}
-      </CardHeader>
+      </div>
 
-      {/* Content */}
-      <CardContent className="px-4 py-2">
-        <p className="text-[15px] leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
-          {post.content}
-        </p>
-      </CardContent>
+      {/* ── Content ────────────────────────────────────────── */}
+      <div className="px-5 pb-3">
+        {isEditing ? (
+          <div className="mb-2">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full text-[14px] leading-[1.6] text-[var(--text-1)] min-h-[80px] p-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg outline-none"
+              autoFocus
+            />
+            
+            {/* Media management in edit mode */}
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {localMedia.map((m, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[var(--border)]">
+                    <Image src={m.url} alt="post" fill className="object-cover" />
+                    <button onClick={() => removeLocalMedia(m.url)} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5 hover:bg-black">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {newFiles.map((f, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[rgb(var(--primary-rgb))] opacity-60">
+                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-[10px] text-center p-1">{f.name}</div>
+                    <button onClick={() => setNewFiles(newFiles.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5 hover:bg-black">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {(localMedia.length + newFiles.length < 5) && (
+                  <label className="w-20 h-20 rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                    <Send className="w-4 h-4 text-[var(--text-3)]" />
+                    <span className="text-[10px] text-[var(--text-3)] mt-1">Add</span>
+                    <input type="file" hidden multiple accept="image/*,video/*" onChange={handleFileChange} />
+                  </label>
+                )}
+              </div>
+            </div>
 
-      {/* Media */}
+            <div className="flex gap-2 justify-end mt-4">
+              <button onClick={() => { setIsEditing(false); setEditContent(post.content); setLocalMedia(post.media || []); setNewFiles([]); }} className="btn-ghost px-3 py-1 text-xs">Cancel</button>
+              <button onClick={handleUpdate} disabled={isUpdating} className="btn-primary px-3 py-1 text-xs">Save Changes</button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-[14px] leading-[1.6] text-[var(--text-1)] whitespace-pre-wrap" style={{ letterSpacing: "-0.005em" }}>
+            {post.content}
+          </p>
+        )}
+      </div>
+
+      {/* ── Media ──────────────────────────────────────────── */}
       {post.media?.length > 0 && (
         <div className={cn(
-          "w-full bg-slate-100 dark:bg-slate-950 mt-2",
-          post.media.length === 1 ? "pb-[56.25%]" : "grid grid-cols-2 gap-0.5",
-          post.media.length === 1 && "relative"
+          "w-full overflow-hidden border-y border-[var(--border)]",
+          post.media.length > 1 && "grid grid-cols-2 gap-px bg-[var(--border)]"
         )}>
           {post.media.map((m, i) => (
-            <div key={i} className={post.media.length === 1 ? "absolute inset-0" : "relative aspect-square"}>
-              {m.type === "image" ? (
-                <Image src={m.url} alt="post media" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
-              ) : (
-                <video src={m.url} controls className="w-full h-full object-cover" />
-              )}
+            <div key={i} className={cn("relative bg-[var(--surface-2)]", post.media.length === 1 ? "aspect-video" : "aspect-square")}>
+              {m.type === "image"
+                ? <Image src={m.url} alt="post media" fill sizes="(max-width:768px)100vw,50vw" className="object-cover" />
+                : <video src={m.url} controls className="w-full h-full object-cover" />
+              }
             </div>
           ))}
         </div>
       )}
 
-      {/* Stats */}
+      {/* ── Stats ──────────────────────────────────────────── */}
       {(likes > 0 || post.commentCount > 0) && (
-        <div className="px-4 py-2.5 flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 dark:border-slate-800/60">
+        <div className="px-5 py-2 flex items-center justify-between">
           {likes > 0 ? (
             <div className="flex items-center gap-1.5">
-              <div className="flex -space-x-1">
-                <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center ring-2 ring-white dark:ring-slate-900 z-10">
-                  <Heart className="w-2.5 h-2.5 fill-white text-white" />
-                </div>
+              <div className="w-4 h-4 rounded-full bg-[rgb(var(--primary-rgb))] flex items-center justify-center">
+                <Heart className="w-2.5 h-2.5 fill-white text-white" />
               </div>
-              <span>{likes}</span>
+              <span className="text-[12px] text-[var(--text-3)]">{likes}</span>
             </div>
           ) : <div />}
           {post.commentCount > 0 && (
-            <div className="hover:underline cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 transition-colors" onClick={fetchComments}>
-              {post.commentCount} comments
-            </div>
+            <button
+              onClick={fetchComments}
+              className="text-[12px] text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
+            >
+              {post.commentCount} {post.commentCount === 1 ? "comment" : "comments"}
+            </button>
           )}
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex items-center px-2 py-1 gap-1 border-b border-slate-100 dark:border-slate-800/60">
-        <Button
-          variant="ghost"
-          asMotion={!isLiked}
-          className={cn(
-            "flex-1 h-12 rounded-lg font-semibold gap-2 items-center",
-            isLiked ? "text-blue-600 dark:text-blue-500" : "text-slate-600 dark:text-slate-400"
-          )}
-          onClick={handleLike}
-        >
-          <motion.div animate={isLiked ? { scale: [1, 1.2, 1], rotate: [0, -10, 0] } : {}} transition={{ duration: 0.3 }}>
-            <Heart className={cn("w-[18px] h-[18px]", isLiked && "fill-current")} />
-          </motion.div>
-          <span>Like</span>
-        </Button>
-        <Button
-          variant="ghost" 
-          className="flex-1 h-12 rounded-lg font-semibold text-slate-600 gap-2 items-center dark:text-slate-400"
-          onClick={fetchComments}
-        >
-          <MessageSquare className="w-[18px] h-[18px]" />
-          <span>Comment</span>
-        </Button>
-        <Button
-          variant="ghost"
-          className="flex-1 h-12 rounded-lg font-semibold text-slate-600 gap-2 items-center dark:text-slate-400"
-          onClick={handleShare}
-        >
-          <Share2 className="w-[18px] h-[18px]" />
-          <span>Share</span>
-        </Button>
+      {/* ── Action Bar ─────────────────────────────────────── */}
+      <div className="flex items-center border-t border-[var(--border)]">
+        {[
+          {
+            icon: Heart,
+            label: "Like",
+            active: isLiked,
+            onClick: handleLike,
+            activeClass: "text-[rgb(var(--primary-rgb))]",
+          },
+          {
+            icon: MessageSquare,
+            label: "Comment",
+            active: showComments,
+            onClick: fetchComments,
+            activeClass: "text-[rgb(var(--primary-rgb))]",
+          },
+          {
+            icon: Share2,
+            label: "Share",
+            active: false,
+            onClick: handleShare,
+            activeClass: "",
+          },
+        ].map(({ icon: Icon, label, active, onClick, activeClass }) => (
+          <button
+            key={label}
+            onClick={onClick}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 h-11 text-[13px] font-medium transition-all duration-150",
+              "hover:bg-[var(--surface-2)] hover:text-[var(--text-1)]",
+              active ? activeClass : "text-[var(--text-2)]"
+            )}
+          >
+            <motion.div animate={active && label === "Like" ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.25 }}>
+              <Icon className={cn("w-[17px] h-[17px]", active && label === "Like" && "fill-current")} />
+            </motion.div>
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Comments Section */}
+      {/* ── Comments Section ───────────────────────────────── */}
       <AnimatePresence>
         {showComments && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-slate-50/50 dark:bg-slate-900/50"
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden border-t border-[var(--border)]"
           >
-            <div className="p-4 flex gap-3">
-              <Avatar src={user?.avatar} alt={user?.firstName} size="md" className="mt-1" />
-              <form onSubmit={handleAddComment} className="flex-1 relative flex items-center">
-                <Input
-                  placeholder="Add a comment..."
-                  className="pr-12 rounded-full bg-white dark:bg-slate-950 shadow-sm"
+            {/* Comment input */}
+            <div className="px-5 py-3 flex gap-3">
+              <Avatar src={user?.avatar} alt={user?.firstName} size="sm" className="flex-shrink-0 mt-0.5" />
+              <form onSubmit={handleAddComment} className="flex-1 flex items-center gap-2">
+                <input
+                  placeholder="Write a comment…"
+                  className="input text-[13px] py-2 flex-1"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                 />
-                <Button 
-                  disabled={!newComment.trim()} 
-                  size="icon" 
-                  variant="ghost" 
-                  className="absolute right-1 w-8 h-8 rounded-full text-primary hover:bg-slate-100"
+                <button
+                  disabled={!newComment.trim()}
                   type="submit"
+                  className="w-8 h-8 rounded-lg bg-[rgb(var(--primary-rgb))] text-white flex items-center justify-center disabled:opacity-40 transition-opacity flex-shrink-0"
                 >
-                  <Send className="w-4 h-4" />
-                </Button>
+                  <Send className="w-3.5 h-3.5" />
+                </button>
               </form>
             </div>
 
+            {/* Comment list */}
             {loadingComments ? (
-              <div className="p-4 text-center text-sm text-slate-500">Loading comments...</div>
+              <div className="px-5 pb-4 text-[13px] text-[var(--text-3)] text-center">Loading…</div>
             ) : (
-              <div className="px-4 pb-4 space-y-4">
-                {comments.map((comment) => (
-                  <div key={comment._id} className="flex gap-3">
-                    <Avatar src={comment.author?.avatar} alt={comment.author?.firstName} size="sm" />
-                    <div className="flex-1 group">
-                      <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-none px-4 py-2.5 inline-block max-w-[90%]">
-                        <div className="flex items-center justify-between gap-4 mb-0.5">
-                          <h4 className="font-semibold text-sm hover:underline cursor-pointer">
-                            {comment.author?.firstName} {comment.author?.lastName}
-                          </h4>
-                          <span className="text-[10px] text-slate-500 shrink-0">
-                            {formatDistanceToNow(new Date(comment.createdAt))}
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-800 dark:text-slate-200">{comment.text}</p>
+              <div className="px-5 pb-4 space-y-3">
+                {comments.map((c) => (
+                  <div key={c._id} className="flex gap-3">
+                    <Avatar src={c.author?.avatar} alt={c.author?.firstName} size="sm" className="flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 bg-[var(--surface-2)] rounded-xl rounded-tl-sm px-3.5 py-2.5">
+                      <div className="flex items-center justify-between gap-4 mb-1">
+                        <span className="font-semibold text-[12px] text-[var(--text-1)] tracking-tight">
+                          {c.author?.firstName} {c.author?.lastName}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-3)] flex-shrink-0">
+                          {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
+                        </span>
                       </div>
+                      <p className="text-[13px] text-[var(--text-1)] leading-snug">{c.text}</p>
                     </div>
                   </div>
                 ))}
@@ -257,7 +361,6 @@ export default function PostCard({ post, onDelete }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </Card>
+    </article>
   );
 }
-

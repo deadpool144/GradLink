@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import PostCard from "@/components/PostCard";
 import {
   MapPin, Calendar, Briefcase, Link as LinkIcon, Edit,
-  MessageSquare, UserPlus, Check, UserMinus, Loader2, Camera
+  MessageSquare, UserPlus, Check, UserMinus, Loader2, Camera, ArrowLeft, ArrowRight
 } from "lucide-react";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -31,11 +31,8 @@ export default function ProfilePage() {
         setUser(data.data);
         
         // Fetch posts by this user
-        // We'll use the feed endpoint with a user filter or similar if available, 
-        // but for now, we'll just show empty or implement a user post endpoint if needed.
-        // Let's assume we can query posts by author.
-        // const { data: postData } = await api.get(`/posts/user/${data.data._id}`);
-        // setPosts(postData.data);
+        const { data: postData } = await api.get(`/posts/user/${data.data._id}`);
+        setPosts(postData.data.data || []);
       } catch (err) {
         toast.error("User not found");
         router.push("/feed");
@@ -205,18 +202,75 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+
+          {/* Experience Section */}
+          {user?.experience?.length > 0 && (
+            <div className="card p-5">
+              <h3 className="font-bold mb-4 flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-primary" /> Experience
+              </h3>
+              <div className="space-y-4">
+                {user.experience.map((ex, i) => (
+                  <div key={i} className="border-l-2 border-slate-100 dark:border-slate-800 pl-4 relative">
+                    <div className="absolute w-2 h-2 rounded-full bg-primary -left-[5px] top-1.5" />
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">{ex.title}</h4>
+                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">{ex.company}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{ex.from} — {ex.to || "Present"}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Education Section */}
+          {user?.education?.length > 0 && (
+            <div className="card p-5">
+              <h3 className="font-bold mb-4 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" /> Education
+              </h3>
+              <div className="space-y-4">
+                {user.education.map((ed, i) => (
+                  <div key={i} className="border-l-2 border-slate-100 dark:border-slate-800 pl-4 relative">
+                    <div className="absolute w-2 h-2 rounded-full bg-indigo-500 -left-[5px] top-1.5" />
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">{ed.school}</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{ed.degree}{ed.fieldOfStudy ? `, ${ed.fieldOfStudy}` : ""}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{ed.from} — {ed.to}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mid/Right Col: Activity */}
         <div className="md:col-span-2">
           <div className="mb-4 flex items-center justify-between px-2">
-            <h3 className="font-bold">Activity</h3>
-            <button className="text-sm text-primary font-semibold hover:underline">Show all posts</button>
+            <h3 className="font-bold">Recent Activity</h3>
+            {isMe && (
+              <button 
+                onClick={() => router.push("/manage-content")}
+                className="text-sm text-primary font-bold hover:underline flex items-center gap-1"
+              >
+                Manage All Content <ArrowLeft className="w-4 h-4 rotate-180" />
+              </button>
+            )}
           </div>
           
           <div className="space-y-4">
             {posts.length > 0 ? (
-              posts.map(post => <PostCard key={post._id} post={post} />)
+              <>
+                {posts.slice(0, 3).map(post => (
+                  <PostCard key={post._id} post={post} onDelete={(id) => setPosts(posts.filter(p => p._id !== id))} />
+                ))}
+                {posts.length > 3 && (
+                  <button 
+                    onClick={() => router.push(isMe ? "/manage-content" : `/profile/${user._id}/posts`)}
+                    className="w-full card p-4 text-center text-sm font-bold text-primary hover:bg-primary/5 transition-colors"
+                  >
+                    View all {posts.length} posts
+                  </button>
+                )}
+              </>
             ) : (
               <div className="card p-10 text-center text-slate-400">
                 <p>No activity to show yet.</p>

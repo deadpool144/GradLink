@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
 import { initSocket, disconnectSocket, getSocket } from "@/lib/socket";
-import { appendMessage } from "@/lib/slices/chatSlice";
+import { appendMessage, setTyping, clearTyping } from "@/lib/slices/chatSlice";
 import { prependNotification } from "@/lib/slices/notifSlice";
 import { setOnlineUsers } from "@/lib/slices/authSlice";
 import api from "@/lib/api";

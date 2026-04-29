@@ -4,21 +4,24 @@ import { forwardRef } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-const Avatar = forwardRef(({ className, src, alt = "Avatar", fallback, size = "md", ...props }, ref) => {
-  const sizeClasses = {
-    sm: "w-8 h-8 text-xs",
-    md: "w-10 h-10 text-sm",
-    lg: "w-12 h-12 text-base",
-    xl: "w-16 h-16 text-xl",
-  };
+const sizeMap = {
+  xs: "w-6 h-6 text-[9px]",
+  sm: "w-8 h-8 text-[10px]",
+  md: "w-9 h-9 text-xs",
+  lg: "w-11 h-11 text-sm",
+  xl: "w-14 h-14 text-base",
+};
+
+const Avatar = forwardRef(function Avatar({ className, src, alt = "Avatar", fallback, size = "md", ...props }, ref) {
+  const initials = fallback || alt?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <div
       ref={ref}
       className={cn(
-        "relative flex shrink-0 overflow-hidden rounded-full font-bold",
-        "border-2 border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800",
-        sizeClasses[size] || sizeClasses.md,
+        "relative flex shrink-0 overflow-hidden rounded-full font-semibold",
+        "bg-[var(--surface-2)] border border-[var(--border)]",
+        sizeMap[size] || sizeMap.md,
         className
       )}
       {...props}
@@ -28,12 +31,15 @@ const Avatar = forwardRef(({ className, src, alt = "Avatar", fallback, size = "m
           src={src}
           alt={alt}
           fill
-          sizes="(max-width: 768px) 100vw, 40px"
-          className="aspect-square h-full w-full object-cover"
+          sizes="40px"
+          className="object-cover w-full h-full"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-primary/10 text-primary">
-          {fallback || alt?.charAt(0)?.toUpperCase() || "U"}
+        <div
+          className="flex h-full w-full items-center justify-center font-bold"
+          style={{ background: "var(--primary-alpha)", color: "rgb(var(--primary-rgb))" }}
+        >
+          {initials}
         </div>
       )}
     </div>
@@ -41,5 +47,4 @@ const Avatar = forwardRef(({ className, src, alt = "Avatar", fallback, size = "m
 });
 
 Avatar.displayName = "Avatar";
-
 export { Avatar };

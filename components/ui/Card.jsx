@@ -1,59 +1,42 @@
-"use client";
-
-import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-const Card = forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-[#0f172a] dark:text-slate-50",
-      className
-    )}
-    {...props}
-  />
-));
-Card.displayName = "Card";
+export function Card({ className, children, ...props }) {
+  return (
+    <div
+      className={cn(
+        "bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow-sm)] transition-all duration-200",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
 
-const CardHeader = forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-));
-CardHeader.displayName = "CardHeader";
+export function CardHeader({ className, children, ...props }) {
+  return (
+    <div className={cn("px-5 pt-5 pb-3", className)} {...props}>
+      {children}
+    </div>
+  );
+}
 
-const CardTitle = forwardRef(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
-    {...props}
-  />
-));
-CardTitle.displayName = "CardTitle";
+export function CardContent({ className, children, ...props }) {
+  return (
+    <div className={cn("px-5 py-3", className)} {...props}>
+      {children}
+    </div>
+  );
+}
 
-const CardDescription = forwardRef(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-slate-500 dark:text-slate-400", className)}
-    {...props}
-  />
-));
-CardDescription.displayName = "CardDescription";
-
-const CardContent = forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-));
-CardContent.displayName = "CardContent";
-
-const CardFooter = forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-));
-CardFooter.displayName = "CardFooter";
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+export function CardFooter({ className, children, ...props }) {
+  return (
+    <div
+      className={cn("px-5 pb-4 pt-3 border-t border-[var(--border)]", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
