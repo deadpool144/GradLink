@@ -111,25 +111,27 @@ const AiChatButton = () => {
       {/* Static Floating Notification for Testing Phase */}
       <AnimatePresence>
         {showNotice && pathname === "/" && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] w-full max-w-[400px] px-4"
           >
             <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-white/10 p-4 rounded-3xl shadow-2xl relative">
-              <button 
+              <button
                 onClick={() => setShowNotice(false)}
                 className="absolute -top-2 -right-2 w-6 h-6 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shadow-md transition-all duration-200"
               >
                 <X size={12} />
               </button>
               <div className="flex items-start gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 mt-1.5 animate-pulse shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                <div className="w-3 h-3 rounded-full bg-amber-500 mt-1.5 animate-pulse shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
                 <div className="space-y-1">
                   <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
-                    <span className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[9px] bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded-md mr-1.5">Testing Phase</span>
-                    Do not misuse AI. Use less AI chat (low computation). Deployed on Render free server (takes ~50s on first start).
+                    <span className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[10px] letter-spacing-medium bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded-md mr-1.5">Testing Phase</span>
+                    This platform uses a locally hosted AI model, so responses may be slower than usual.
+                    Please avoid excessive or repeated requests to ensure smooth performance for all users.
+                    The app is hosted on a free Render server, so the first request may take around 40–60 seconds due to cold start.
                   </p>
                 </div>
               </div>
