@@ -36,48 +36,42 @@ const AnimatedBackground = () => {
   );
 };
 
-const Navbar = () => {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
+const Header = () => {
   return (
-    <nav className={`fixed top-0 w-full z-50 px-8 py-6 flex justify-between items-center transition-all duration-700 ${scrolled ? 'bg-white/80 dark:bg-black/80 backdrop-blur-2xl py-4 border-b border-zinc-100 dark:border-zinc-800' : 'bg-transparent'}`}>
-      <Link href="/">
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-3 cursor-pointer group"
-        >
-          <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12">
-            <div className="w-5 h-5 bg-white rounded-md rotate-45" />
-          </div>
-          <span className="font-display font-black text-2xl tracking-tighter text-slate-900 dark:text-white uppercase transition-colors">GradLink</span>
-        </motion.div>
-      </Link>
-      
-      <div className="hidden md:flex items-center gap-12 text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-zinc-500">
-        {['The Network', 'Directory', 'Intelligence'].map((item) => (
-          <a key={item} href="#" className="hover:text-blue-600 dark:hover:text-white transition-all group relative">
-            {item}
-            <span className="absolute -bottom-2 left-0 w-0 h-[1px] bg-blue-600 dark:bg-white transition-all group-hover:w-full" />
-          </a>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-6">
-        <ThemeToggle />
-        <Link href="/auth">
-          <button className="text-[10px] font-black uppercase tracking-[0.4em] text-white bg-slate-900 dark:bg-white dark:text-black px-10 py-3.5 rounded-full hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10 dark:shadow-white/5 cursor-pointer">
-            Launch Node
-          </button>
+    <header className="absolute top-0 w-full z-50">
+      <div className="max-w-7xl mx-auto h-20 md:h-24 px-4 sm:px-8 md:px-12 flex items-center justify-between">
+        <Link href="/">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
+          >
+            <div className="w-9 h-9 md:w-10 md:h-10 bg-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12 shadow-lg shadow-blue-600/20">
+              <div className="w-4 h-4 md:w-5 md:h-5 bg-white rounded-md rotate-45" />
+            </div>
+            <span className="font-display font-black text-lg md:text-2xl tracking-tighter text-slate-900 dark:text-white uppercase hidden min-[400px]:block">GradLink</span>
+          </motion.div>
         </Link>
+        
+        <div className="flex items-center gap-1.5 sm:gap-6">
+          <div className="scale-90 sm:scale-100">
+            <ThemeToggle />
+          </div>
+          <div className="flex items-center gap-1 sm:gap-3">
+            <Link href="/auth">
+              <button className="h-9 sm:h-10 px-2 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                Login
+              </button>
+            </Link>
+            <Link href="/auth">
+              <button className="h-9 sm:h-10 px-4 sm:px-8 bg-slate-900 dark:bg-white text-white dark:text-black text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] rounded-lg sm:rounded-xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10 dark:shadow-white/5">
+                Sign Up
+              </button>
+            </Link>
+          </div>
+        </div>
       </div>
-    </nav>
+    </header>
   );
 };
 
@@ -94,7 +88,7 @@ const Hero = () => {
   const textX = useTransform(scrollYProgress, [0, 1], [0, -100]);
 
   return (
-    <section ref={containerRef} className="relative pt-48 pb-60 flex flex-col items-center justify-center min-h-[110vh] overflow-hidden">
+    <section ref={containerRef} className="relative pt-32 md:pt-48 pb-40 md:pb-60 flex flex-col items-center justify-center min-h-[100vh] md:min-h-[110vh] overflow-hidden">
       <motion.div style={{ opacity, y, scale }} className="text-center z-10 max-w-6xl px-6">
         <motion.div
            initial={{ opacity: 0, y: 20 }}
@@ -455,7 +449,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white dark:bg-black font-sans selection:bg-blue-600 selection:text-white transition-colors duration-1000 w-full overflow-x-hidden">
        <NoiseOverlay />
        <AnimatedBackground />
-       <Navbar />
+       <Header />
 
        <main>
           <Hero />
