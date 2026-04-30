@@ -1,78 +1,448 @@
 "use client";
-import Link from "next/link";
-import { useSelector } from "react-redux";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { ArrowRight, Users, Shield, MessageSquare, Calendar, Zap, Network, Star, Globe } from "lucide-react";
-import { motion, useInView } from "framer-motion";
+
+import { motion, useScroll, useTransform, AnimatePresence, useSpring, useInView } from 'framer-motion';
+import { 
+  Users, 
+  MessageSquare, 
+  Search, 
+  Calendar, 
+  Shield, 
+  Sparkles, 
+  ArrowRight, 
+  Globe,
+  Briefcase,
+  Sun,
+  Moon,
+  Zap,
+  CheckCircle,
+  Share2,
+  Layers,
+  ArrowUpRight
+} from 'lucide-react';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import { useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-// ── Animated Counter ─────────────────────────────────────────────────────────
-function CountUp({ to, suffix = "" }) {
-  return <span>{to}{suffix}</span>;
-}
+const NoiseOverlay = () => <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />;
 
-// ── Feature Card ─────────────────────────────────────────────────────────────
-function FeatureCard({ icon: Icon, title, desc, color, delay = 0 }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-
+const AnimatedBackground = () => {
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 24 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="group bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-md)] transition-all duration-300"
-    >
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 duration-300"
-        style={{ background: `${color}15` }}
-      >
-        <Icon className="w-5 h-5" style={{ color }} />
-      </div>
-      <h3 className="font-bold text-[15px] text-[var(--text-1)] mb-2 tracking-tight">{title}</h3>
-      <p className="text-[13px] text-[var(--text-2)] leading-relaxed">{desc}</p>
-    </motion.div>
-  );
-}
-
-// ── Stat ─────────────────────────────────────────────────────────────────────
-function Stat({ value, label, delay = 0 }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true });
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 16 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay }}
-      className="text-center"
-    >
-      <p className="text-4xl md:text-5xl font-black text-[var(--text-1)] tracking-[-0.04em]">{value}</p>
-      <p className="text-xs font-semibold text-[var(--text-3)] uppercase tracking-[0.1em] mt-2">{label}</p>
-    </motion.div>
-  );
-}
-
-// ── Marquee strip ────────────────────────────────────────────────────────────
-const logos = ["Google", "Microsoft", "Amazon", "Meta", "Flipkart", "Razorpay", "CRED", "Zepto", "PhonePe", "Paytm"];
-function Marquee() {
-  return (
-    <div className="relative overflow-hidden py-4">
-      <div className="flex gap-12 animate-[marquee_25s_linear_infinite] w-max">
-        {[...logos, ...logos].map((name, i) => (
-          <span key={i} className="text-[13px] font-bold text-[var(--text-3)] whitespace-nowrap tracking-wider uppercase">{name}</span>
-        ))}
-      </div>
-      {/* Fade edges */}
-      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[var(--bg)] to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[var(--bg)] to-transparent pointer-events-none" />
+    <div className="fixed inset-0 -z-20 overflow-hidden pointer-events-none transition-colors duration-1000">
+      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-100/30 dark:bg-blue-900/5 rounded-full blur-[150px] animate-blob" />
+      <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-indigo-100/30 dark:bg-indigo-900/5 rounded-full blur-[150px] animate-blob animation-delay-2000" />
     </div>
   );
-}
+};
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+const Navbar = () => {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <nav className={`fixed top-0 w-full z-50 px-8 py-6 flex justify-between items-center transition-all duration-700 ${scrolled ? 'bg-white/80 dark:bg-black/80 backdrop-blur-2xl py-4 border-b border-zinc-100 dark:border-zinc-800' : 'bg-transparent'}`}>
+      <Link href="/">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
+          <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12">
+            <div className="w-5 h-5 bg-white rounded-md rotate-45" />
+          </div>
+          <span className="font-display font-black text-2xl tracking-tighter text-slate-900 dark:text-white uppercase transition-colors">GradLink</span>
+        </motion.div>
+      </Link>
+      
+      <div className="hidden md:flex items-center gap-12 text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-zinc-500">
+        {['The Network', 'Directory', 'Intelligence'].map((item) => (
+          <a key={item} href="#" className="hover:text-blue-600 dark:hover:text-white transition-all group relative">
+            {item}
+            <span className="absolute -bottom-2 left-0 w-0 h-[1px] bg-blue-600 dark:bg-white transition-all group-hover:w-full" />
+          </a>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-6">
+        <ThemeToggle />
+        <Link href="/auth">
+          <button className="text-[10px] font-black uppercase tracking-[0.4em] text-white bg-slate-900 dark:bg-white dark:text-black px-10 py-3.5 rounded-full hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10 dark:shadow-white/5 cursor-pointer">
+            Launch Node
+          </button>
+        </Link>
+      </div>
+    </nav>
+  );
+};
+
+const Hero = () => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+
+  const y = useTransform(scrollYProgress, [0, 1], [0, 400]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.9]);
+  const textX = useTransform(scrollYProgress, [0, 1], [0, -100]);
+
+  return (
+    <section ref={containerRef} className="relative pt-48 pb-60 flex flex-col items-center justify-center min-h-[110vh] overflow-hidden">
+      <motion.div style={{ opacity, y, scale }} className="text-center z-10 max-w-6xl px-6">
+        <motion.div
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ delay: 0.2 }}
+           className="mb-12"
+        >
+          <span className="bg-zinc-100 dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 text-[10px] font-black uppercase tracking-[0.5em] px-6 py-3 rounded-full border border-zinc-200 dark:border-zinc-800">
+            A New Standard for Alumni
+          </span>
+        </motion.div>
+        
+        <motion.h1 
+          className="font-display text-7xl md:text-[12rem] font-black text-slate-900 dark:text-white leading-[0.8] tracking-[-0.075em] mb-16"
+        >
+          SCALING <br />
+          <motion.span style={{ x: textX }} className="inline-block italic text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-800">LEGACY.</motion.span>
+        </motion.h1>
+        
+        <p className="text-xl md:text-2xl text-slate-500 dark:text-zinc-400 font-medium max-w-2xl mx-auto leading-relaxed mb-20">
+          The alumni network, architected for high-fidelity professional evolution. 
+          Verified. Vetted. Visionary.
+        </p>
+
+        <div className="flex flex-col sm:row gap-6 justify-center items-center">
+           <Link href="/auth">
+             <button className="px-14 py-8 bg-blue-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.4em] hover:scale-105 active:scale-95 transition-all shadow-3xl shadow-blue-500/30 cursor-pointer">
+               Initialize Access
+             </button>
+           </Link>
+           <button className="px-14 py-8 border-2 border-slate-100 dark:border-zinc-800 text-slate-900 dark:text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.4em] hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all cursor-pointer">
+             Case Studies
+           </button>
+        </div>
+      </motion.div>
+
+      {/* Floating Interactive Mesh Background */}
+      <div className="absolute inset-0 -z-10 bg-grid-pattern opacity-[0.03] dark:opacity-[0.05]" />
+      
+      {/* 3D Elements */}
+      <motion.div 
+        style={{ y: useTransform(scrollYProgress, [0, 1], [0, -300]), rotate: -15, scale: 0.9 }}
+        className="absolute top-1/4 -left-32 w-[30rem] h-[30rem] bg-zinc-50 dark:bg-zinc-900 rounded-[5rem] shadow-6xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-center p-12"
+      >
+        <img 
+          src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=1200&auto=format&fit=crop" 
+          className="w-full h-full object-cover rounded-[3rem] grayscale opacity-40"
+          referrerPolicy="no-referrer"
+          alt="Interface"
+        />
+      </motion.div>
+
+      <motion.div 
+        style={{ y: useTransform(scrollYProgress, [0, 1], [0, -500]), rotate: 10 }}
+        className="absolute bottom-[-10%] -right-32 w-[35rem] h-[40rem] bg-zinc-50 dark:bg-zinc-900 rounded-[6rem] shadow-6xl border border-zinc-100 dark:border-zinc-800 p-16"
+      >
+        <div className="w-full h-full border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[4rem] flex flex-col justify-center items-center gap-8 text-center p-8">
+           <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center text-blue-600">
+             <Zap className="w-10 h-10" />
+           </div>
+           <h3 className="text-3xl font-display font-black text-slate-900 dark:text-white tracking-tighter">NODE STATUS: <br /> OPTIMAL</h3>
+           <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Latent Connections Found</p>
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+const NetworkGraphGraphic = () => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
+  const rotate = useTransform(scrollYProgress, [0, 1], [0, 45]);
+  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.8, 1.05, 0.8]);
+
+  const nodes = useMemo(() => [...Array(20)].map((_, i) => ({
+    x: Math.random() * 800 - 400,
+    y: Math.random() * 800 - 400,
+    size: Math.random() * 8 + 4,
+    delay: i * 0.05
+  })), []);
+
+  return (
+    <section ref={containerRef} className="py-60 bg-black text-white relative overflow-hidden">
+      <div className="container mx-auto px-8 grid lg:grid-cols-2 gap-32 items-center">
+        <motion.div
+           initial={{ opacity: 0, x: -50 }}
+           whileInView={{ opacity: 1, x: 0 }}
+           viewport={{ margin: "-100px" }}
+           className="space-y-12 relative z-10"
+        >
+           <div className="flex items-center gap-4 text-blue-500 font-black uppercase tracking-[0.6em] text-[10px]">
+             <Share2 className="w-4 h-4" />
+             <span>The Connection Mesh</span>
+           </div>
+           
+           <h2 className="text-6xl md:text-9xl font-display font-black leading-[0.8] tracking-[-0.05em]">
+             VISUALIZING <br /> <span className="text-blue-500">SYNERGY.</span>
+           </h2>
+           
+           <p className="text-xl text-zinc-400 font-medium leading-relaxed max-w-lg">
+             Stop guessing who knows whom. Our graph intelligence exposes the bridges between 250,000+ top-tier alumni globally.
+           </p>
+
+           <div className="space-y-6 pt-8">
+              {[
+                { label: 'Latency', value: '4ms' },
+                { label: 'Active Nodes', value: '184k' },
+                { label: 'Intersections', value: '1.2m' }
+              ].map((stat, i) => (
+                <div key={i} className="flex justify-between items-end border-b border-zinc-800 pb-4">
+                   <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">{stat.label}</span>
+                   <span className="text-3xl font-display font-black tracking-tighter">{stat.value}</span>
+                </div>
+              ))}
+           </div>
+        </motion.div>
+
+        <div className="relative aspect-square">
+           <motion.div style={{ rotate, scale }} className="w-full h-full relative">
+              <svg viewBox="-500 -500 1000 1000" className="w-full h-full">
+                 <defs>
+                    <filter id="glow">
+                       <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                       <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                       </feMerge>
+                    </filter>
+                 </defs>
+                 {nodes.map((node, i) => (
+                    nodes.slice(i + 1, i + 3).map((target, j) => (
+                      <motion.line 
+                        key={`${i}-${j}`}
+                        x1={node.x} y1={node.y} x2={target.x} y2={target.y}
+                        stroke="rgba(59, 130, 246, 0.4)"
+                        strokeWidth="1"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        whileInView={{ pathLength: 1, opacity: 1 }}
+                        transition={{ duration: 1.5, delay: node.delay }}
+                      />
+                    ))
+                 ))}
+                 {nodes.map((node, i) => (
+                    <motion.circle 
+                       key={i}
+                       cx={node.x} cy={node.y} r={node.size}
+                       fill={i % 3 === 0 ? "#3b82f6" : "rgba(255,255,255,0.3)"}
+                       initial={{ scale: 0 }}
+                       whileInView={{ scale: 1 }}
+                       transition={{ type: "spring", delay: node.delay }}
+                       filter={i % 3 === 0 ? "url(#glow)" : "none"}
+                    />
+                 ))}
+              </svg>
+              {/* Core Flare */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-blue-600 rounded-full blur-[120px] opacity-20 pointer-events-none" />
+           </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const VideoParallaxSection = () => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
+  const zoom = useTransform(scrollYProgress, [0, 1], [1, 1.5]);
+  const opacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 1], [0, 1, 1, 0]);
+
+  return (
+    <section ref={containerRef} className="py-80 bg-zinc-950 relative overflow-hidden">
+      <motion.div style={{ scale: zoom, opacity }} className="absolute inset-0 z-0">
+        <video 
+          autoPlay loop muted playsInline
+          className="w-full h-full object-cover grayscale opacity-20"
+        >
+          <source src="https://assets.mixkit.co/videos/preview/mixkit-business-people-walking-in-a-lobby-4464-large.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-transparent to-zinc-950" />
+      </motion.div>
+
+      <div className="container mx-auto px-8 relative z-10 text-center">
+         <motion.div
+           initial={{ opacity: 0, y: 50 }}
+           whileInView={{ opacity: 1, y: 0 }}
+           viewport={{ margin: "-100px" }}
+           className="space-y-16"
+         >
+            <h2 className="text-6xl md:text-[14rem] font-display font-black text-white leading-none tracking-[-0.08em] uppercase">
+              PHYSICAL. <br /> <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-800">MEETS DIGITAL.</span>
+            </h2>
+            <p className="text-2xl text-zinc-400 font-medium max-w-xl mx-auto italic">
+              "Networking isn't just about the handshake; it's about the data architecture behind it."
+            </p>
+         </motion.div>
+      </div>
+    </section>
+  );
+};
+
+const ZigZagParallax = () => {
+  const containerRef = useRef(null);
+  const sections = [
+    {
+      title: "SCALING.",
+      subtitle: "Exponential Growth",
+      desc: "Direct-to-expert tunnels. Land interviews or secure funding within minutes, not months.",
+      img: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1200&auto=format&fit=crop",
+      direction: 1
+    },
+    {
+      title: "VETTED.",
+      subtitle: "Verified Assets",
+      desc: "An unhackable chain of trust. Only university-verified graduates can access the mesh.",
+      img: "https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?q=80&w=1200&auto=format&fit=crop",
+      direction: -1
+    }
+  ];
+
+  return (
+    <section ref={containerRef} className="py-60 space-y-80 bg-white dark:bg-black transition-colors overflow-hidden">
+       {sections.map((section, i) => (
+         <div key={i} className="container mx-auto px-8">
+            <div className={`flex flex-col ${section.direction === 1 ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-32 items-center`}>
+               <motion.div 
+                 initial={{ opacity: 0, x: section.direction * -100 }}
+                 whileInView={{ opacity: 1, x: 0 }}
+                 transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+                 className="flex-1 space-y-12"
+               >
+                  <span className="text-blue-600 font-black uppercase tracking-[0.5em] text-[10px] pb-4 border-b border-zinc-100 dark:border-zinc-800 block w-max">
+                    {section.subtitle}
+                  </span>
+                  <h2 className="text-7xl md:text-[10rem] font-display font-black text-slate-900 dark:text-white leading-[0.8] tracking-tighter">
+                    {section.title}
+                  </h2>
+                  <p className="text-xl text-slate-500 dark:text-zinc-400 font-medium leading-relaxed max-w-lg">
+                    {section.desc}
+                  </p>
+                  <button className="group flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] transition-all hover:gap-6 cursor-pointer text-slate-900 dark:text-white">
+                    Explore Node <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </button>
+               </motion.div>
+
+               <div className="flex-1 relative">
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0, rotate: section.direction * 10 }}
+                    whileInView={{ scale: 1, opacity: 1, rotate: 0 }}
+                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+                    className="rounded-[5rem] overflow-hidden shadow-6xl border-4 border-zinc-50 dark:border-zinc-900 aspect-[4/5]"
+                  >
+                     <img 
+                       src={section.img} 
+                       alt={section.title} 
+                       className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000 scale-110 hover:scale-100" 
+                       referrerPolicy="no-referrer" 
+                     />
+                  </motion.div>
+                  {/* Floating Detail Overlay */}
+                  <motion.div
+                    whileInView={{ y: 20 }}
+                    className="absolute -bottom-10 -right-10 md:right-10 bg-white dark:bg-zinc-900 p-10 rounded-[3rem] shadow-2xl border border-zinc-100 dark:border-zinc-800 max-w-[15rem] hidden md:block"
+                  >
+                     <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-4">Node Metrics</p>
+                     <div className="h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full mb-6 overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          whileInView={{ width: "85%" }}
+                          transition={{ duration: 1.5, delay: 0.5 }}
+                          className="h-full bg-blue-600"
+                        />
+                     </div>
+                     <p className="text-xs font-bold text-slate-900 dark:text-white">Active Participation: 85.4%</p>
+                  </motion.div>
+               </div>
+            </div>
+         </div>
+       ))}
+    </section>
+  );
+};
+
+const MinimalistFooter = () => {
+  return (
+    <footer className="pt-60 pb-12 bg-white dark:bg-black border-t border-zinc-100 dark:border-zinc-900 transition-colors">
+      <div className="container mx-auto px-8">
+        <div className="grid md:grid-cols-4 gap-32 mb-48">
+           <div className="col-span-2 space-y-12">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-blue-600 rounded-[2rem] flex items-center justify-center">
+                  <div className="w-8 h-8 bg-white rounded-lg rotate-45 shadow-lg" />
+                </div>
+                <span className="font-display font-black text-5xl tracking-tighter text-slate-900 dark:text-white uppercase transition-colors">GradLink</span>
+              </div>
+              <p className="text-3xl text-slate-400 dark:text-zinc-500 font-medium max-w-lg leading-tight tracking-tight italic">
+                "The most valuable asset in the modern world is an unhackable network."
+              </p>
+           </div>
+           
+           <div className="space-y-12">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-900 dark:text-white">The Mesh</h4>
+              <ul className="space-y-6 text-sm font-bold text-zinc-400 dark:text-zinc-600">
+                {['Directory', 'Intelligence', 'C-Suite Access', 'Legacy Founders'].map((l) => (
+                  <li key={l}><a href="#" className="hover:text-blue-600 dark:hover:text-white transition-colors">{l}</a></li>
+                ))}
+              </ul>
+           </div>
+
+           <div className="space-y-12">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-900 dark:text-white">Connect</h4>
+               <div className="flex flex-wrap gap-4">
+                  {[Globe, Share2, MessageSquare].map((Icon, idx) => (
+                     <motion.a 
+                       key={idx} 
+                       whileHover={{ y: -5, scale: 1.1 }}
+                       href="#" 
+                       className="w-16 h-16 bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] flex items-center justify-center text-zinc-400 hover:text-blue-600 dark:hover:text-white transition-all shadow-sm border border-zinc-100 dark:border-zinc-800"
+                     >
+                       <Icon className="w-6 h-6" />
+                     </motion.a>
+                  ))}
+               </div>
+           </div>
+        </div>
+
+        <div className="flex flex-col md:row justify-between items-center gap-12 pt-16 border-t border-zinc-100 dark:border-zinc-900 text-[10px] font-black uppercase tracking-[0.5em] text-zinc-400">
+           <p>© 2026 GradLink Digital Architecture. All rights reserved.</p>
+           <div className="flex gap-12">
+             <span className="flex items-center gap-3">
+               <div className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
+               Nodes Optimized
+             </span>
+             <span className="hover:text-blue-600 cursor-pointer transition-colors">Privacy Encryption</span>
+           </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
 export default function LandingPage() {
   const { isLoggedIn } = useSelector((s) => s.auth);
   const router = useRouter();
@@ -81,200 +451,73 @@ export default function LandingPage() {
     if (isLoggedIn) router.push("/feed");
   }, [isLoggedIn, router]);
 
-  const features = [
-    { icon: MessageSquare, title: "Real-time Messaging", desc: "Seamless 1-to-1 and group chats with typing indicators and read receipts.", color: "#4F46E5" },
-    { icon: Users, title: "Alumni Directory", desc: "Find former classmates using advanced batch, year, and department filtering.", color: "#0EA5E9" },
-    { icon: Calendar, title: "Events & Meetups", desc: "Discover and RSVP to alumni events in your city and online.", color: "#10B981" },
-    { icon: Network, title: "Professional Network", desc: "Build your graph of meaningful professional connections that last a lifetime.", color: "#F59E0B" },
-    { icon: Shield, title: "Secure & Verified", desc: "Enterprise-grade authentication with OTP email verification for all members.", color: "#EF4444" },
-    { icon: Zap, title: "AI-Powered Assistant", desc: "Get instant answers, networking tips, and career advice from your Alumni AI.", color: "#8B5CF6" },
-  ];
-
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text-1)" }}>
+    <div className="min-h-screen bg-white dark:bg-black font-sans selection:bg-blue-600 selection:text-white transition-colors duration-1000 w-full overflow-x-hidden">
+       <NoiseOverlay />
+       <AnimatedBackground />
+       <Navbar />
 
-      {/* ── Navbar ──────────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 w-full z-50 bg-[var(--surface)]/90 backdrop-blur-xl border-b border-[var(--border)]">
-        <div className="max-w-6xl mx-auto h-14 px-5 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-[rgb(var(--primary-rgb))] rounded-[10px] flex items-center justify-center shadow-[var(--shadow-primary)]">
-              <span className="text-white font-black text-sm">A</span>
-            </div>
-            <span className="font-extrabold text-[15px] tracking-[-0.04em] text-[var(--text-1)]">GradLink</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <Link href="/auth">
-              <button className="btn-ghost h-8 px-4 text-sm">Sign In</button>
-            </Link>
-            <Link href="/auth">
-              <button className="btn-primary h-8 px-4 text-sm flex items-center gap-1.5">
-                Get Started <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+       <main>
+          <Hero />
+          
+          <section className="py-20 opacity-30 grayscale hover:opacity-60 transition-all cursor-default">
+             <div className="flex overflow-hidden relative whitespace-nowrap">
+                <motion.div 
+                  initial={{ x: 0 }}
+                  animate={{ x: "-100%" }}
+                  transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+                  className="flex gap-40 text-4xl md:text-6xl font-display font-black uppercase tracking-tighter pr-40"
+                >
+                  <span>Stanford</span> <span>Oxford</span> <span>MIT</span> <span>Harvard</span> <span>Cambridge</span> <span>Berkeley</span>
+                </motion.div>
+                <motion.div 
+                  initial={{ x: 0 }}
+                  animate={{ x: "-100%" }}
+                  transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+                  className="flex gap-40 text-4xl md:text-6xl font-display font-black uppercase tracking-tighter pr-40"
+                >
+                  <span>Stanford</span> <span>Oxford</span> <span>MIT</span> <span>Harvard</span> <span>Cambridge</span> <span>Berkeley</span>
+                </motion.div>
+             </div>
+          </section>
 
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <section className="pt-36 pb-24 px-5">
-        <div className="max-w-4xl mx-auto text-center">
+          <NetworkGraphGraphic />
+          <ZigZagParallax />
+          <VideoParallaxSection />
 
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--primary-alpha)] border border-[rgba(79,70,229,0.2)] mb-8"
-          >
-            <span className="w-1.5 h-1.5 bg-[rgb(var(--primary-rgb))] rounded-full animate-pulse" />
-            <span className="text-[11px] font-bold text-[rgb(var(--primary-rgb))] uppercase tracking-[0.08em]">AI-Powered Alumni Networking</span>
-          </motion.div>
+          <section className="py-80 bg-white dark:bg-black">
+             <div className="container mx-auto px-8 text-center space-y-16">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ margin: "-100px" }}
+                  className="space-y-12"
+                >
+                   <div className="inline-flex items-center gap-4 bg-zinc-900 dark:bg-white text-white dark:text-black py-3 px-6 rounded-full text-[10px] font-black uppercase tracking-[0.5em] shadow-2xl">
+                      <Layers className="w-4 h-4" />
+                      <span>Ready to Deploy</span>
+                   </div>
+                   
+                   <h2 className="text-7xl md:text-[14rem] font-display font-black text-slate-900 dark:text-white leading-[0.8] tracking-[-0.08em]">
+                      YOUR TURN <br /> <motion.span whileHover={{ scale: 1.05 }} className="italic text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-800 transition-transform cursor-pointer inline-block">TO LEAD.</motion.span>
+                   </h2>
+                   
+                   <div className="flex flex-col sm:row gap-8 justify-center pt-12 items-center">
+                      <Link href="/auth">
+                        <button className="px-16 py-8 bg-blue-600 text-white rounded-[3rem] text-[10px] font-black uppercase tracking-[0.5em] hover:scale-105 active:scale-95 shadow-3xl shadow-blue-500/40 transition-all cursor-pointer">
+                          Initialize Node
+                        </button>
+                      </Link>
+                      <button className="px-16 py-8 border-2 border-slate-100 dark:border-zinc-800 text-slate-900 dark:text-white rounded-[3rem] text-[10px] font-black uppercase tracking-[0.5em] hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all cursor-pointer">
+                        View Documentation
+                      </button>
+                   </div>
+                </motion.div>
+             </div>
+          </section>
+       </main>
 
-          {/* Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] mb-6"
-            style={{ letterSpacing: "-0.04em" }}
-          >
-            Where Alumni{" "}
-            <br className="hidden sm:block" />
-            <span className="text-gradient">Meet Opportunity</span>
-          </motion.h1>
-
-          {/* Sub */}
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="max-w-xl mx-auto text-[16px] text-[var(--text-2)] mb-10 leading-relaxed"
-            style={{ letterSpacing: "-0.01em" }}
-          >
-            The premium networking platform built for alumni. Stay connected, share opportunities,
-            and grow your career with the community that knows you best.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3"
-          >
-            <Link href="/auth">
-              <button className="btn-primary h-12 px-8 text-[15px] w-full sm:w-auto group">
-                Join the Network
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </Link>
-            <Link href="/auth">
-              <button className="btn-secondary h-12 px-8 text-[15px] w-full sm:w-auto">
-                Explore Directory
-              </button>
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── Alumni Companies ─────────────────────────────────────────────── */}
-      <section className="py-8 border-y border-[var(--border)]">
-        <p className="text-center text-[11px] font-bold text-[var(--text-3)] uppercase tracking-[0.12em] mb-6">
-          Alumni working at
-        </p>
-        <Marquee />
-      </section>
-
-      {/* ── Stats ───────────────────────────────────────────────────────── */}
-      <section className="py-20 px-5">
-        <div className="max-w-3xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10">
-          <Stat value="10k+" label="Active Members" delay={0} />
-          <Stat value="45+" label="Global Chapters" delay={0.1} />
-          <Stat value="1.2k" label="Job Postings" delay={0.2} />
-          <Stat value="250k+" label="Connections" delay={0.3} />
-        </div>
-      </section>
-
-      {/* ── Features ────────────────────────────────────────────────────── */}
-      <section className="py-20 px-5 border-t border-[var(--border)]">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-14 max-w-xl">
-            <p className="text-[11px] font-bold text-[rgb(var(--primary-rgb))] uppercase tracking-[0.1em] mb-3">Platform Features</p>
-            <h2 className="text-3xl md:text-4xl font-black text-[var(--text-1)] mb-4" style={{ letterSpacing: "-0.035em" }}>
-              Everything you need to<br />stay connected
-            </h2>
-            <p className="text-[14px] text-[var(--text-2)] leading-relaxed">
-              Built with alumni in mind. Every feature designed to help you maintain and grow meaningful connections.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {features.map((f, i) => (
-              <FeatureCard key={i} {...f} delay={i * 0.07} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA Banner ─────────────────────────────────────────────────── */}
-      <section className="py-20 px-5">
-        <div className="max-w-4xl mx-auto">
-          <div
-            className="relative rounded-3xl overflow-hidden p-10 md:p-16 text-center"
-            style={{
-              background: "linear-gradient(135deg, rgb(79,70,229) 0%, rgb(139,92,246) 100%)",
-              boxShadow: "0 32px 64px rgba(79,70,229,0.3)"
-            }}
-          >
-            {/* Noise texture overlay */}
-            <div className="absolute inset-0 pointer-events-none opacity-20"
-              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E\")" }}
-            />
-
-            <div className="relative">
-              {/* <Star className="w-8 h-8 text-yellow-300 mx-auto mb-5 fill-yellow-300" /> */}
-              <h2 className="text-3xl md:text-5xl font-black text-white mb-4" style={{ letterSpacing: "-0.04em" }}>
-                Your network is your net worth
-              </h2>
-              <p className="text-indigo-200 text-[15px] max-w-lg mx-auto mb-8 leading-relaxed">
-                Join thousands of alumni who've found their next opportunity, mentor, or co-founder on AlumniConnect.
-              </p>
-              <Link href="/auth">
-                <button className="h-12 px-8 bg-white text-indigo-600 font-bold rounded-xl text-[15px] hover:bg-indigo-50 transition-colors shadow-xl inline-flex items-center gap-2">
-                  Create Free Account <ArrowRight className="w-4 h-4" />
-                </button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[var(--border)] py-12 px-5">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-[rgb(var(--primary-rgb))] rounded-lg flex items-center justify-center">
-              <span className="text-white font-black text-xs">A</span>
-            </div>
-            <span className="font-extrabold text-[14px] tracking-[-0.03em] text-[var(--text-1)]">GradLink</span>
-          </div>
-          <p className="text-[12px] text-[var(--text-3)]">© 2026 AlumniConnect. All rights reserved.</p>
-          <div className="flex items-center gap-5">
-            {["Privacy", "Terms", "Contact"].map(l => (
-              <a key={l} href="#" className="text-[12px] text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors">{l}</a>
-            ))}
-          </div>
-        </div>
-      </footer>
-
-      {/* ── Marquee animation ─────────────────────────── */}
-      <style>{`
-        @keyframes marquee {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-      `}</style>
+       <MinimalistFooter />
     </div>
   );
 }
