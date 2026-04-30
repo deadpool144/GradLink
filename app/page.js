@@ -49,7 +49,7 @@ const Header = () => {
             <div className="w-9 h-9 md:w-10 md:h-10 bg-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12 shadow-lg shadow-blue-600/20">
               <div className="w-4 h-4 md:w-5 md:h-5 bg-white rounded-md rotate-45" />
             </div>
-            <span className="font-display font-black text-lg md:text-2xl tracking-tighter text-slate-900 dark:text-white uppercase hidden min-[400px]:block">GradLink</span>
+            <span className="font-display font-bold text-lg md:text-2xl tracking-[-0.05em] text-slate-900 dark:text-white uppercase hidden min-[400px]:block">GradLink</span>
           </motion.div>
         </Link>
         
@@ -102,15 +102,15 @@ const Hero = () => {
         </motion.div>
         
         <motion.h1 
-          className="font-display text-7xl md:text-[12rem] font-black text-slate-900 dark:text-white leading-[0.8] tracking-[-0.075em] mb-16"
+          className="font-display text-7xl md:text-[12rem] font-black text-slate-900 dark:text-white leading-[0.8] tracking-[-0.08em] mb-16"
         >
           SCALING <br />
-          <motion.span style={{ x: textX }} className="inline-block italic text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-800">LEGACY.</motion.span>
+          <motion.span style={{ x: textX }} className="inline-block italic text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-800 tracking-[-0.04em]">LEGACY.</motion.span>
         </motion.h1>
         
-        <p className="text-xl md:text-2xl text-slate-500 dark:text-zinc-400 font-medium max-w-2xl mx-auto leading-relaxed mb-20">
-          The alumni network, architected for high-fidelity professional evolution. 
-          Verified. Vetted. Visionary.
+        <p className="text-xl md:text-2xl text-slate-500 dark:text-zinc-400 font-medium max-w-2xl mx-auto leading-[1.6] tracking-[-0.02em] mb-20">
+          The alumni network, architected for high-fidelity <span className="text-slate-900 dark:text-white font-bold">professional evolution.</span> <br />
+          <span className="text-[10px] uppercase tracking-[0.6em] opacity-40 mt-4 block">Verified. Vetted. Visionary.</span>
         </p>
 
         <div className="flex flex-col sm:row gap-6 justify-center items-center">
