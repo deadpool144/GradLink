@@ -1,19 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   Send,
   FileText,
   Image as ImageIcon,
-  Paperclip,
   X,
   GraduationCap,
-  Download,
-  AlertCircle
 } from "lucide-react";
-import axios from "axios";
 import api from "@/lib/api";
 import ReactMarkdown from "react-markdown";
 import { toast } from "react-hot-toast";
@@ -22,7 +18,8 @@ const AIHub = () => {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: "# Welcome to the AI Career Hub! \n\nI'm your dedicated advisor. Use the tools below to get started:\n\n- **Documents**: Upload your Resume or Cover Letter for analysis.\n- **Images**: Upload screenshots of job postings or certifications.\n- **Chat**: Ask me anything about networking or career growth.\n\nHow can I assist your professional journey today?",
+      content:
+        "# Welcome to the AI Career Hub! \n\nI'm your dedicated advisor. Use the tools below to get started:\n\n- **Documents**: Upload your Resume or Cover Letter for analysis.\n- **Images**: Upload screenshots of job postings or certifications.\n- **Chat**: Ask me anything about networking or career growth.\n\nHow can I assist your professional journey today?",
       time: new Date(),
     },
   ]);
@@ -44,13 +41,16 @@ const AIHub = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (type === 'image') {
-      if (!file.type.startsWith('image/')) {
+    if (type === "image") {
+      if (!file.type.startsWith("image/")) {
         toast.error("Please upload an image file.");
         return;
       }
     } else {
-      const validDocs = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+      const validDocs = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
       if (!validDocs.includes(file.type)) {
         toast.error("Please upload a PDF or DOCX file.");
         return;
@@ -70,17 +70,22 @@ const AIHub = () => {
   const handleSend = async () => {
     if ((!input.trim() && !attachedFile) || isLoading) return;
 
-    const userText = input.trim() || (attachedFile ? `Please analyze this ${uploadType}: ${attachedFile.name}` : "");
+    const userText =
+      input.trim() ||
+      (attachedFile ? `Please analyze this ${uploadType}: ${attachedFile.name}` : "");
     const currentFile = attachedFile;
     const currentType = uploadType;
 
-    // Add user message
-    setMessages(prev => [...prev, {
-      role: "user",
-      content: userText,
-      file: currentFile ? { name: currentFile.name, type: currentType } : null,
-      time: new Date()
-    }]);
+    // Show user message immediately
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "user",
+        content: userText,
+        file: currentFile ? { name: currentFile.name, type: currentType } : null,
+        time: new Date(),
+      },
+    ]);
 
     setInput("");
     setAttachedFile(null);
@@ -88,31 +93,48 @@ const AIHub = () => {
     setIsLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("message", userText);
-      // Add history context (last 5 messages)
-      formData.append("history", JSON.stringify(messages.slice(-5)));
+      let data;
 
       if (currentFile) {
+        // FILE UPLOAD → /ai/analyze (resume/doc analysis)
+        const formData = new FormData();
+        formData.append("message", userText);
+        formData.append("history", JSON.stringify(messages.slice(-5)));
         formData.append("file", currentFile);
+
+        const res = await api.post("/ai/analyze", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        data = res.data;
+      } else {
+        // TEXT ONLY → /ai/chat (RAG career Q&A)
+        const res = await api.post("/ai/chat", {
+          message: userText,
+          history: messages.slice(-5),
+        });
+        data = res.data;
       }
 
-      const { data } = await api.post(`/ai/analyze`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: data.data.response,
-        time: new Date()
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.data.response,
+          time: new Date(),
+        },
+      ]);
     } catch (err) {
+      console.error("AI request failed:", err);
       toast.error("Trouble Encountered");
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: "Sorry, I encountered some trouble processing your request. Please ensure the AI service is running and try again.",
-        time: new Date()
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "Sorry, I encountered some trouble processing your request. Please try again.",
+          time: new Date(),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -150,41 +172,54 @@ const AIHub = () => {
         <div className="max-w-5xl mx-auto w-full space-y-8">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-1 shadow-sm ${msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-800 border border-[var(--border)] text-indigo-500"
-                }`}>
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-1 shadow-sm ${
+                  msg.role === "user"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white dark:bg-slate-800 border border-[var(--border)] text-indigo-500"
+                }`}
+              >
                 {msg.role === "user" ? <GraduationCap size={20} /> : <Sparkles size={20} />}
               </div>
 
               <div className={`flex flex-col gap-2 max-w-[85%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                <div className={`px-6 py-4 rounded-[28px] text-[15px] leading-relaxed shadow-sm ${msg.role === "user"
-                  ? "bg-indigo-600 text-white rounded-tr-md"
-                  : "bg-white dark:bg-slate-800 border border-[var(--border)] text-[var(--text-1)] rounded-tl-md"
-                  }`}>
+                <div
+                  className={`px-6 py-4 rounded-[28px] text-[15px] leading-relaxed shadow-sm ${
+                    msg.role === "user"
+                      ? "bg-indigo-600 text-white rounded-tr-md"
+                      : "bg-white dark:bg-slate-800 border border-[var(--border)] text-[var(--text-1)] rounded-tl-md"
+                  }`}
+                >
                   {msg.file && (
                     <div className="mb-4 p-3 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl flex items-center gap-3">
-                      {msg.file.type === 'image' ? <ImageIcon size={20} className="text-indigo-500" /> : <FileText size={20} className="text-indigo-500" />}
+                      {msg.file.type === "image" ? (
+                        <ImageIcon size={20} className="text-indigo-500" />
+                      ) : (
+                        <FileText size={20} className="text-indigo-500" />
+                      )}
                       <span className="text-[13px] font-bold truncate">{msg.file.name}</span>
                     </div>
                   )}
-                  <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none 
-                    prose-p:my-2 prose-headings:my-3 prose-ul:my-3 prose-li:my-1
-                    prose-strong:text-indigo-600 dark:prose-strong:text-indigo-400">
+                  <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-3 prose-li:my-1 prose-strong:text-indigo-600 dark:prose-strong:text-indigo-400">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 </div>
                 <span className="text-[11px] text-[var(--text-3)] font-bold px-3 tracking-wide opacity-70">
-                  {msg.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {msg.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
             </div>
           ))}
+
           {isLoading && (
             <div className="flex gap-5">
               <div className="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 border border-[var(--border)] flex items-center justify-center text-indigo-500 animate-pulse">
                 <Sparkles size={20} />
               </div>
               <div className="bg-white dark:bg-slate-800 border border-[var(--border)] px-6 py-4 rounded-3xl rounded-tl-md shadow-sm flex items-center gap-3">
-                <span className="text-[14px] text-[var(--text-2)] font-bold italic tracking-tight">Processing your request...</span>
+                <span className="text-[14px] text-[var(--text-2)] font-bold italic tracking-tight">
+                  Processing your request...
+                </span>
                 <div className="flex gap-1.5">
                   <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
                   <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -205,9 +240,18 @@ const AIHub = () => {
               animate={{ opacity: 1, y: 0 }}
               className="mb-4 inline-flex items-center gap-3 px-4 py-2.5 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 rounded-2xl shadow-sm"
             >
-              {uploadType === 'image' ? <ImageIcon size={18} className="text-indigo-600" /> : <FileText size={18} className="text-indigo-600" />}
-              <span className="text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{attachedFile.name}</span>
-              <button onClick={() => { setAttachedFile(null); setUploadType(null); }} className="p-1 hover:bg-indigo-200/50 rounded-full transition-colors ml-1">
+              {uploadType === "image" ? (
+                <ImageIcon size={18} className="text-indigo-600" />
+              ) : (
+                <FileText size={18} className="text-indigo-600" />
+              )}
+              <span className="text-[13px] font-bold text-indigo-700 dark:text-indigo-300">
+                {attachedFile.name}
+              </span>
+              <button
+                onClick={() => { setAttachedFile(null); setUploadType(null); }}
+                className="p-1 hover:bg-indigo-200/50 rounded-full transition-colors ml-1"
+              >
                 <X size={16} className="text-indigo-600" />
               </button>
             </motion.div>
@@ -216,14 +260,14 @@ const AIHub = () => {
           <div className="flex items-end gap-3 bg-slate-50 dark:bg-slate-800/80 p-3 rounded-[32px] border border-[var(--border)] focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-400/5 transition-all shadow-sm">
             <div className="flex items-center gap-1 pl-2 mb-1">
               <button
-                onClick={() => { setUploadType('doc'); fileInputRef.current.click(); }}
+                onClick={() => { setUploadType("doc"); fileInputRef.current.click(); }}
                 title="Upload Document (PDF/DOCX)"
                 className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-white/10 rounded-2xl transition-all"
               >
                 <FileText size={22} />
               </button>
               <button
-                onClick={() => { setUploadType('image'); fileInputRef.current.click(); }}
+                onClick={() => { setUploadType("image"); fileInputRef.current.click(); }}
                 title="Upload Image"
                 className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-white/10 rounded-2xl transition-all"
               >
@@ -236,7 +280,7 @@ const AIHub = () => {
               className="hidden"
               ref={fileInputRef}
               onChange={(e) => handleFileUpload(e, uploadType)}
-              accept={uploadType === 'image' ? ".png,.jpg,.jpeg" : ".pdf,.docx"}
+              accept={uploadType === "image" ? ".png,.jpg,.jpeg" : ".pdf,.docx"}
             />
 
             <textarea
